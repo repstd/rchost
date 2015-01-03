@@ -13,7 +13,9 @@
 #include <OpenThreads\Thread>
 #include <OpenThreads\Mutex>
 #include <map>
-
+class HOST_OPERATOR;
+static HOST_OPERATOR* g_hostOperator = NULL;
+static OpenThreads::Mutex* g_hostMutex = NULL;
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API 
 {
@@ -54,7 +56,6 @@ private:
 	bool m_bIsDataLoaded;
 };
 
-static HOST_OPERATOR* g_hostOperator = NULL;
 //Threads to serve the clients.
 class HOST_SLAVE :public OpenThreads::Thread
 {
