@@ -31,32 +31,3 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-//int test_data()
-//{
-//	HOST_MSG  msg;
-//	msg._prog = _MANHATTAN;
-//	msg._operation = _OPEN;
-//	char buf[30];
-//	std::cout << sizeof(msg) << std::endl;
-//	for (int i = 0; i <10 ; i++)
-//	{
-//		if (i%2)
-//			sprintf(buf, "TEST MSG DATA STRUCTURE");
-//		else
-//			sprintf(buf, "fdfdfd");
-//
-//		writeArgs(&msg, buf);
-//	}
-//	char dataRcv[500];
-//	memcpy(dataRcv, &msg, sizeof(msg));
-//	HOST_MSG* pMsg = reinterpret_cast<HOST_MSG*>(dataRcv);
-//	char read[30];
-//	for (int i = 0; i < pMsg->_argc; i++)
-//	{
-//		readArgs(pMsg, i,read);
-//		std::cout << read << std::endl;
-//	}
-//
-//	std::cout << sizeof(msg) << std::endl;
-//	return 0;
-//}

@@ -14,6 +14,10 @@
 #include <OpenThreads\Mutex>
 #include <map>
 
+class HOST_OPERATOR;
+static HOST_OPERATOR* g_hostOperator = NULL;
+static OpenThreads::Mutex* g_hostMutex = NULL;
+//Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API 
 {
 
@@ -22,9 +26,9 @@ public:
 	~HOST_OPERATOR_API();
 	virtual DWORD handleProgram(std::string filename, const char op,bool isCurDirNeeded);
 protected:
+
 	DWORD createProgram(std::string filename,std::string path, const char* curDir,std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
-
 	//use pathes stored in a configuration file.
 	virtual DWORD loadPathMap(const char* filename) = 0;
 	DWORD createProgram(std::string filename,bool isCurDirNeeded);
@@ -33,6 +37,8 @@ protected:
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
 };
+
+//Concrete class for host_operator.
 class HOST_OPERATOR
 	:public HOST_OPERATOR_API
 {
@@ -42,22 +48,23 @@ public:
 	const char* getPath(std::string filename);
 	const char* getArg(std::string filename);
 protected:
+	virtual void initMutex(OpenThreads::Mutex* mutex);
 	HOST_OPERATOR()
 		:HOST_OPERATOR_API()
 	{
 		m_bIsDataLoaded = false;
+		initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
 	}
 private:
 	bool m_bIsDataLoaded;
 };
 
-static HOST_OPERATOR* m_operator = NULL;
+//Threads to serve the clients.
 class HOST_SLAVE :public OpenThreads::Thread
 {
 
 public:
 	HOST_SLAVE(const HOST_MSG* msg);
-
 	virtual void handle() const;
 	virtual void run();
 	const OpenThreads::Mutex* getMutex() const;

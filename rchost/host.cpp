@@ -22,12 +22,12 @@ HOST_OPERATOR_API::~HOST_OPERATOR_API()
 {
 }
 
-DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool isCurDirNeeded)
 {
 	switch (op)
 	{
 	case _OPEN:
-		return createProgram(filename,isCurDirNeeded);
+		return createProgram(filename, isCurDirNeeded);
 	case _CLOSE:
 		return closeProgram(filename);
 	default:
@@ -35,7 +35,7 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op,bool 
 	}
 
 }
-DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir,std::string args, const int arg)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
 
 {
 	std::cout << filename << " " << path << " " << args << std::endl;
@@ -108,7 +108,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 	}
 #else
 	//if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, const_cast<char*>(curDir.c_str()), &si, &pi))
-	if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0,curDir, &si, &pi))
+	if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, curDir, &si, &pi))
 	{
 		return GetLastError();
 	}
@@ -122,7 +122,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 
 	return ERROR_SUCCESS;
 }
-DWORD HOST_OPERATOR_API::createProgram(std::string filename,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
 {
 
 	std::string path;
@@ -137,9 +137,9 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename,bool isCurDirNeeded)
 		curDir = parsePath(path.c_str());
 
 	if (iter != m_mapNameArgs.end())
-		return createProgram(filename, path, curDir,iter->second, 1);
+		return createProgram(filename, path, curDir, iter->second, 1);
 	else
-		return createProgram(filename, path,curDir,"",0);
+		return createProgram(filename, path, curDir, "", 0);
 
 }
 DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
@@ -176,29 +176,38 @@ DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 
 char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 {
-	
+
 	//Parse the full path of the program to be created.
 	//Here we suppose the input path is of the following style:
 	//				c://path//to//program.exe
 	//The current dir shuold be: 
 	//				c://path//to
 	char* p = const_cast<char*>(fullpath);
-	char* start=p;
+	char* start = p;
 	char* sub;
-	while (p!=NULL && (sub = strstr(p, "//")) != NULL)
+	while (p != NULL && (sub = strstr(p, "//")) != NULL)
 		p = sub + 2;
-	int sz=p-start-2;
-	char* curDir=new char[sz];
-	memcpy(curDir,start,sz);
+	int sz = p - start - 2;
+	char* curDir = new char[sz];
+	memcpy(curDir, start, sz);
 	//std::cout<<curDir<<std::endl;
 	return curDir;
 
 }
+
+void HOST_OPERATOR::initMutex(OpenThreads::Mutex* mutex)
+{
+	g_hostMutex = mutex;
+}
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-	if (m_operator == NULL)
-		m_operator = new HOST_OPERATOR;
-	return m_operator;
+	if (g_hostOperator == NULL)
+	{
+		//g_hostMutex->lock();
+		g_hostOperator = new HOST_OPERATOR;
+		//g_hostMutex->unlock();
+	}
+	return g_hostOperator;
 }
 const char* HOST_OPERATOR::getPath(std::string filename)
 {
@@ -221,7 +230,7 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 	if (m_bIsDataLoaded)
 		return 0;
 	char strINIPath[MAX_PATH];
-	_fullpath(strINIPath,config, MAX_PATH);
+	_fullpath(strINIPath, config, MAX_PATH);
 	if (GetFileAttributes(strINIPath) == 0xFFFFFFFF)
 	{
 
@@ -272,18 +281,21 @@ HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
 
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
+
 }
 void HOST_SLAVE::handle() const
 {
 	if (strstr(m_taskMsg->_filename, "cegui") == 0)
-		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation,false );
+		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, false);
 	else
 		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, true);
 }
 void HOST_SLAVE::run()
 {
 	m_mutex->lock();
+
 	handle();
+
 	m_mutex->unlock();
 }
 void HOST_SLAVE::initMutex(OpenThreads::Mutex* mutex)
@@ -296,25 +308,24 @@ const OpenThreads::Mutex* HOST_SLAVE::getMutex() const
 }
 
 HOST::HOST(const int port)
-	:server(port)
+:server(port)
 {
 }
 
 void HOST::run()
 {
-	char msgRcv[_MAX_DATA_SIZE+8];
+	char msgRcv[_MAX_DATA_SIZE + 8];
 	sockaddr client;
 	int sizeRcv;
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
-		getPacket(client,msgRcv, sizeRcv, _MAX_DATA_SIZE);
+		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 		if (sizeRcv == _MAX_DATA_SIZE)
 		{
 			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->start();
-			slave->join();
 		}
-			
+
 	}
 }
