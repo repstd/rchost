@@ -21,7 +21,9 @@ int main(int argc, char* argv[])
 		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	if (argc > 2)
 			port= atoi(argv[2]);
+
 	HOST_OPERATOR::instance()->loadPathMap("control.ini");
+
 	std::auto_ptr<HOST> host(new HOST(port));
 
 	host->run();
