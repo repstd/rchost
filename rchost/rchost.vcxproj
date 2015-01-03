@@ -45,8 +45,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(OSG_ROOT)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(OSG_ROOT)\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(OSG_ROOT)\include;$(SolutionDir)\librc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(OSG_ROOT)\lib;$(SolutionDir)$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)\intermediate\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -79,7 +79,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>OpenThreads.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenThreads.lib;ws2_32.lib;librc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Bscmake>
       <PreserveSBR>true</PreserveSBR>
@@ -90,16 +90,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="host.h" />
-    <ClInclude Include="rc_common.h" />
-    <ClInclude Include="server.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="host.cpp" />
     <ClCompile Include="rchost.cpp" />
-    <ClCompile Include="rc_common.cpp" />
-    <ClCompile Include="server.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

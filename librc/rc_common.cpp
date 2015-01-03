@@ -2,7 +2,6 @@
 #include "stdafx.h"
 #include "rc_common.h"
 #include <assert.h>
-#ifdef _HOST_H
 
 //void writeArgs(_MSG* msg, const char* arg)
 //{
@@ -58,4 +57,3 @@ void clear(_MSG* msg)
 	msg->_size = 0;
 	msg->_argc = 0;
 }
-#endif

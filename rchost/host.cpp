@@ -300,7 +300,8 @@ const OpenThreads::Mutex* HOST_SLAVE::getMutex() const
 }
 
 HOST::HOST(const int port)
-:server(port)
+:server(port),
+	OpenThreads::Thread()
 {
 }
 
@@ -315,11 +316,10 @@ void HOST::run()
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 		if (sizeRcv == _MAX_DATA_SIZE)
 		{
-			std::cout << "now operate." << std::endl;
-
 			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
+			//slave->join();
 			slave.release();
 		}
 

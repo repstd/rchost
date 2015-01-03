@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "client.h"
 #include  <iostream>
+#include <assert.h>
 client::client()
 {
 }

@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <memory>
 #include <iostream>
-
 int main(int argc, char *argv[])
 {
 	std::cout
@@ -32,7 +31,7 @@ int main(int argc, char *argv[])
 	char buf[_MSG_BUF_SIZE];
 	int cnt = 0;
 	int op = 0;
-	std::cout << "Now input controlling instrucions." << std::endl;
+	std::cout << "Now input contrlling instructions." << std::endl;
 	std::cout << "e.g: type 'osgSync 0' to open osgSync.exe and 'osgSync 1' to close." << std::endl;
 	while (++cnt<50)
 	{

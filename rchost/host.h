@@ -57,7 +57,8 @@ private:
 };
 
 //Threads to serve the clients.
-class HOST_SLAVE :public OpenThreads::Thread
+class HOST_SLAVE 
+	:public OpenThreads::Thread
 {
 
 public:
@@ -71,17 +72,15 @@ protected:
 	std::auto_ptr<HOST_MSG> m_taskMsg;
 };
 
-class HOST:protected server
+class HOST:protected server,public OpenThreads::Thread
 {
 public:
 	HOST(const int port);
 	~HOST()
 	{
-			
+					
 	}
-	void run();
-protected:
-	HOST();
+	virtual void run();
 private:
 	int m_port;
 };
