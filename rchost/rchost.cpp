@@ -4,8 +4,7 @@
 #include "stdafx.h"
 #include <iostream>
 #include "rc_common.h"
-#include "osghost.h"
-
+#include "host.h"
 int main(int argc, char* argv[])
 {
 	std::cout
@@ -21,12 +20,12 @@ int main(int argc, char* argv[])
 	if (quiet)
 		ShowWindow(GetConsoleWindow(), SW_HIDE);
 	if (argc > 2)
-		port= atoi(argv[2]);
+			port= atoi(argv[2]);
+	HOST_OPERATOR::instance()->loadPathMap("control.ini");
+	std::auto_ptr<HOST> host(new HOST(port));
 
-	std::auto_ptr<osghost> host(new osghost(port));
-	host->start();
-	host->join();
-	host->cancel();
+	host->run();
+
 	return 0;
 }
 

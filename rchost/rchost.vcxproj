@@ -89,7 +89,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="host.h" />
-    <ClInclude Include="osghost.h" />
     <ClInclude Include="rc_common.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="stdafx.h" />
@@ -97,7 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="host.cpp" />
-    <ClCompile Include="osghost.cpp" />
     <ClCompile Include="rchost.cpp" />
     <ClCompile Include="rc_common.cpp" />
     <ClCompile Include="server.cpp" />

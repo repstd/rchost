@@ -33,9 +33,6 @@
     <ClInclude Include="rc_common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="osghost.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -51,9 +48,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rc_common.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="osghost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

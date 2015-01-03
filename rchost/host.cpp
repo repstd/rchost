@@ -12,57 +12,17 @@ void wcharTochar(const wchar_t *wchar, char *chr, int length)
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
 }
 
-HOST_API::HOST_API(int port) :
-OpenThreads::Thread()
+HOST_OPERATOR_API::HOST_OPERATOR_API()
 {
-	//Init the mutex with specified mutex type.
-	initMutex(new OpenThreads::Mutex());
-	//initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_RECURSIVE));
-	m_pServer = std::auto_ptr<server>(new server(port));
-	loadPathMap();
-#if 0 
-	for (HOST_MAP_ITER iter = m_mapNamePath.begin(); iter != m_mapNamePath.end(); iter++)
-		std::cout << iter->first << " : " << iter->second << std::endl;
-	for (HOST_MAP_ITER iter = m_mapNameArgs.begin(); iter != m_mapNameArgs.end(); iter++)
-		std::cout << iter->first << " : " << iter->second << std::endl;
-#endif
 	return;
 }
 
 
-HOST_API::~HOST_API()
+HOST_OPERATOR_API::~HOST_OPERATOR_API()
 {
 }
 
-void HOST_API::run()
-{
-	char buf[_MAX_DATA_SIZE];
-	while (m_pServer->isSocketOpen() == true)
-	{
-		
-		std::cout << "Waiting..." << std::endl;
-		sockaddr client;
-		int msgSize = -1;
-		m_pServer->getPacket(client, buf, msgSize, _MAX_DATA_SIZE);
-		char feedback[50];
-		if (msgSize == sizeof(HOST_MSG))
-		{
-			memset(feedback, 0, 50);
-			HOST_MSG* msg;
-			msg = reinterpret_cast<HOST_MSG*>(buf);
-			//handle controlling instructions here.
-			DWORD error = handle(msg);
-			if (error == ERROR_SUCCESS)
-				sprintf(feedback, "Operation Success.\n");
-			else
-				sprintf(feedback, "Operation Failed.ErrorCode: %ld.\n",error);
-			m_pServer->sendPacket(client, feedback, strlen(feedback), _MAX_DATA_SIZE);
-		}
-
-	}
-
-}
-DWORD HOST_API::handleProgram(std::string filename, const char op,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op,bool isCurDirNeeded)
 {
 	switch (op)
 	{
@@ -75,7 +35,8 @@ DWORD HOST_API::handleProgram(std::string filename, const char op,bool isCurDirN
 	}
 
 }
-DWORD HOST_API::createProgram(std::string filename, std::string path, const char* curDir,std::string args, const int arg)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir,std::string args, const int arg)
+
 {
 	std::cout << filename << " " << path << " " << args << std::endl;
 	HOST_INFO_ITER iter;
@@ -161,7 +122,7 @@ DWORD HOST_API::createProgram(std::string filename, std::string path, const char
 
 	return ERROR_SUCCESS;
 }
-DWORD HOST_API::createProgram(std::string filename,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename,bool isCurDirNeeded)
 {
 
 	std::string path;
@@ -181,7 +142,7 @@ DWORD HOST_API::createProgram(std::string filename,bool isCurDirNeeded)
 		return createProgram(filename, path,curDir,"",0);
 
 }
-DWORD HOST_API::closeProgram(std::string filename)
+DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 {
 	HOST_INFO_ITER iter;
 	iter = m_vecProgInfo.find(filename);
@@ -213,7 +174,7 @@ DWORD HOST_API::closeProgram(std::string filename)
 
 }
 
-char* HOST_API::parsePath(const char* fullpath)
+char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 {
 	
 	//Parse the full path of the program to be created.
@@ -233,11 +194,36 @@ char* HOST_API::parsePath(const char* fullpath)
 	return curDir;
 
 }
-DWORD HOST_API::loadPathMap()
+HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-
+	if (m_operator.get() == NULL)
+	{
+		m_operator = std::auto_ptr<HOST_OPERATOR>(new HOST_OPERATOR);
+	}
+	return m_operator.get();
+}
+const char* HOST_OPERATOR::getPath(std::string filename)
+{
+	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
+	if (iter == m_mapNamePath.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+}
+const char* HOST_OPERATOR::getArg(std::string filename)
+{
+	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
+	if (iter == m_mapNameArgs.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+}
+DWORD HOST_OPERATOR::loadPathMap(const char* config)
+{
+	if (m_bIsDataLoaded)
+		return 0;
 	char strINIPath[MAX_PATH];
-	_fullpath(strINIPath, "control.ini", MAX_PATH);
+	_fullpath(strINIPath,config, MAX_PATH);
 	if (GetFileAttributes(strINIPath) == 0xFFFFFFFF)
 	{
 
@@ -277,37 +263,61 @@ DWORD HOST_API::loadPathMap()
 			memset(attriStr, 0, MAX_PATH);
 		}
 	}
+	m_bIsDataLoaded = true;
 	return 0;
 }
-int HOST_API::start()
-{
-	m_mutex->lock();
-	return OpenThreads::Thread::start();
-}
-int HOST_API::startThread()
-{
-	m_mutex->lock();
-	return OpenThreads::Thread::startThread();
-}
 
-int HOST_API::cancel()
+
+HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
+:OpenThreads::Thread()
 {
-	m_mutex->unlock();
-	return OpenThreads::Thread::cancel();
+	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
+
+	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-void HOST_API::initMutex(OpenThreads::Mutex* mutex)
+void HOST_SLAVE::handle() const
+{
+	if (strstr(m_taskMsg->_filename, "cegui") == 0)
+		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, 1);
+	else
+		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, 0);
+}
+void HOST_SLAVE::run()
+{
+	m_mutex->lock();
+	handle();
+	m_mutex->unlock();
+}
+void HOST_SLAVE::initMutex(OpenThreads::Mutex* mutex)
 {
 	m_mutex = std::auto_ptr<OpenThreads::Mutex>(mutex);
 }
-const OpenThreads::Mutex* HOST_API::getMutex() const
+const OpenThreads::Mutex* HOST_SLAVE::getMutex() const
 {
 	return m_mutex.get();
 }
-void HOST_API::lock()
+
+HOST::HOST(const int port)
+	:server(port)
 {
-	m_mutex->lock();
+
 }
-void HOST_API::unlock()
+
+void HOST::run()
 {
-	m_mutex->unlock();
+	char msgRcv[_MAX_DATA_SIZE+8];
+	sockaddr client;
+	int sizeRcv;
+	while (isSocketOpen())
+	{
+		sizeRcv = -1;
+		getPacket(client,msgRcv, sizeRcv, _MAX_DATA_SIZE);
+		if (sizeRcv == _MAX_DATA_SIZE)
+		{
+			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			slave->start();
+			slave->join();
+		}
+			
+	}
 }
