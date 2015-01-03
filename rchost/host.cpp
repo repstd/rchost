@@ -196,11 +196,9 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 }
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-	if (m_operator.get() == NULL)
-	{
-		m_operator = std::auto_ptr<HOST_OPERATOR>(new HOST_OPERATOR);
-	}
-	return m_operator.get();
+	if (m_operator == NULL)
+		m_operator = new HOST_OPERATOR;
+	return m_operator;
 }
 const char* HOST_OPERATOR::getPath(std::string filename)
 {
@@ -278,9 +276,9 @@ HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 void HOST_SLAVE::handle() const
 {
 	if (strstr(m_taskMsg->_filename, "cegui") == 0)
-		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, 1);
+		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation,false );
 	else
-		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, 0);
+		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, true);
 }
 void HOST_SLAVE::run()
 {
@@ -300,7 +298,6 @@ const OpenThreads::Mutex* HOST_SLAVE::getMutex() const
 HOST::HOST(const int port)
 	:server(port)
 {
-
 }
 
 void HOST::run()

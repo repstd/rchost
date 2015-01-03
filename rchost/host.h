@@ -33,7 +33,8 @@ protected:
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
 };
-class HOST_OPERATOR:public HOST_OPERATOR_API
+class HOST_OPERATOR
+	:public HOST_OPERATOR_API
 {
 public:
 	static HOST_OPERATOR* instance();
@@ -42,14 +43,15 @@ public:
 	const char* getArg(std::string filename);
 protected:
 	HOST_OPERATOR()
+		:HOST_OPERATOR_API()
 	{
 		m_bIsDataLoaded = false;
 	}
 private:
-	static bool m_bIsDataLoaded;
-	static std::auto_ptr<HOST_OPERATOR> m_operator;
+	bool m_bIsDataLoaded;
 };
 
+static HOST_OPERATOR* m_operator = NULL;
 class HOST_SLAVE :public OpenThreads::Thread
 {
 
@@ -69,7 +71,10 @@ class HOST:protected server
 {
 public:
 	HOST(const int port);
-	~HOST();
+	~HOST()
+	{
+			
+	}
 	void run();
 protected:
 	HOST();
