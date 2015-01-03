@@ -11,6 +11,7 @@ osghost::osghost(int port):
 
 osghost::~osghost()
 {
+
 }
 DWORD osghost::handle(const HOST_MSG* msg)
 {
