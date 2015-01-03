@@ -14,9 +14,6 @@
 #include <OpenThreads\Mutex>
 #include <map>
 
-class HOST_OPERATOR;
-static HOST_OPERATOR* g_hostOperator = NULL;
-static OpenThreads::Mutex* g_hostMutex = NULL;
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API 
 {
@@ -48,17 +45,16 @@ public:
 	const char* getPath(std::string filename);
 	const char* getArg(std::string filename);
 protected:
-	virtual void initMutex(OpenThreads::Mutex* mutex);
 	HOST_OPERATOR()
 		:HOST_OPERATOR_API()
 	{
 		m_bIsDataLoaded = false;
-		initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
 	}
 private:
 	bool m_bIsDataLoaded;
 };
 
+static HOST_OPERATOR* g_hostOperator = NULL;
 //Threads to serve the clients.
 class HOST_SLAVE :public OpenThreads::Thread
 {

@@ -195,17 +195,11 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 
 }
 
-void HOST_OPERATOR::initMutex(OpenThreads::Mutex* mutex)
-{
-	g_hostMutex = mutex;
-}
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
 	if (g_hostOperator == NULL)
 	{
-		//g_hostMutex->lock();
 		g_hostOperator = new HOST_OPERATOR;
-		//g_hostMutex->unlock();
 	}
 	return g_hostOperator;
 }
@@ -278,10 +272,8 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 :OpenThreads::Thread()
 {
-	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
-
+	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_RECURSIVE));
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
-
 }
 void HOST_SLAVE::handle() const
 {
@@ -314,7 +306,7 @@ HOST::HOST(const int port)
 
 void HOST::run()
 {
-	char msgRcv[_MAX_DATA_SIZE + 8];
+	char msgRcv[_MAX_DATA_SIZE];
 	sockaddr client;
 	int sizeRcv;
 	while (isSocketOpen())
@@ -323,8 +315,12 @@ void HOST::run()
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 		if (sizeRcv == _MAX_DATA_SIZE)
 		{
+			std::cout << "now operate." << std::endl;
+
 			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			slave->Init();
 			slave->start();
+			slave.release();
 		}
 
 	}

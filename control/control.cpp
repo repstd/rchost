@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 	char buf[_MSG_BUF_SIZE];
 	int cnt = 0;
 	int op = 0;
-	rc->sendPacket((char*)msg.get(), sizeof(_MSG));
 	std::cout << "Now input controlling instrucions." << std::endl;
 	std::cout << "e.g: type 'osgSync 0' to open osgSync.exe and 'osgSync 1' to close." << std::endl;
 	while (++cnt<50)
