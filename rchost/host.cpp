@@ -6,7 +6,14 @@
 #include <sstream>
 #include <iterator>
 #include <vector>
+#include "rc_common.h"
+#ifdef _LOG
 
+#define HOST_LOG_FILENAME "./host.log"
+#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
+#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+
+#endif
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
@@ -272,11 +279,45 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 :OpenThreads::Thread()
 {
-	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_RECURSIVE));
+	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
+}
+void HOST_SLAVE::syncTime() const
+{
+	if (m_taskMsg->_timeout < 0.000001)
+		return;
+	FILETIME masterFileTime = m_taskMsg->_time;
+	SYSTEMTIME curSysTime;
+	GetLocalTime(&curSysTime);
+
+	_STD_PRINT_TIME(curSysTime);
+
+	FILETIME curFileTime;
+	SystemTimeToFileTime(&curSysTime, &curFileTime);
+	ULARGE_INTEGER master;
+	ULARGE_INTEGER slave;
+	master.HighPart = masterFileTime.dwHighDateTime;
+	master.LowPart = masterFileTime.dwLowDateTime;
+	slave.HighPart = curFileTime.dwHighDateTime;
+	slave.LowPart = curFileTime.dwLowDateTime;
+	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
+
+	if (sleepTime < 0)
+		sleepTime = 0;
+	if (sleepTime>5)
+		sleepTime = 5;
+
+	Sleep(sleepTime);
+
+	GetLocalTime(&curSysTime);
+	_STD_PRINT_TIME(curSysTime);
+
+#ifdef _LOG
+#endif
 }
 void HOST_SLAVE::handle() const
 {
+	syncTime();
 	if (strstr(m_taskMsg->_filename, "cegui") == 0)
 		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, false);
 	else
@@ -310,6 +351,9 @@ void HOST::run()
 	char msgRcv[_MAX_DATA_SIZE];
 	sockaddr client;
 	int sizeRcv;
+#ifdef _LOG
+	_LOG_INIT_HOST
+#endif
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
@@ -319,7 +363,7 @@ void HOST::run()
 			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
-			//slave->join();
+			slave->join();
 			slave.release();
 		}
 

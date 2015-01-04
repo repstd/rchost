@@ -67,6 +67,7 @@ public:
 	virtual void run();
 	const OpenThreads::Mutex* getMutex() const;
 protected:
+	void syncTime() const;
 	virtual void initMutex(OpenThreads::Mutex* mutex);
 	std::auto_ptr<OpenThreads::Mutex> m_mutex;
 	std::auto_ptr<HOST_MSG> m_taskMsg;

@@ -6,25 +6,6 @@
 #endif
 #define PORT 6000
 
-#ifdef _DEBUG
-extern  FILE* logfout;
-
-#define __LOG(info) { \
-if (logfout == NULL)\
-	logfout = fopen("./log.txt", "ab+"); \
-	fwrite(info, strlen(info), 1, logfout); \
-if (logfout)\
-{\
-	fclose(logfout); \
-	logfout = NULL; \
-}\
-}
-
-#define PRINT_ERR(tag,errCode) \
-	char err[256]; \
-	sprintf(err, "%s  Error Code: %d\n", tag, errCode, WSAGetLastError()); \
-	__LOG(err);
-#endif
 
 class client 
 {

@@ -25,11 +25,12 @@ int main(int argc, char* argv[])
 	HOST_OPERATOR::instance()->loadPathMap("control.ini");
 
 	std::auto_ptr<HOST> host(new HOST(port));
-	host->start();
-	host->join();
-	std::auto_ptr<HOST> host2(new HOST(20715));
-	host2->start();
-	host2->join();
+	host->run();
+	//host->start();
+	//host->join();
+	//std::auto_ptr<HOST> host2(new HOST(20715));
+	//host2->start();
+	//host2->join();
 	return 0;
 }
 

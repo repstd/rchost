@@ -2,6 +2,14 @@
 #include "client.h"
 #include  <iostream>
 #include <assert.h>
+#include "rc_common.h"
+#define PRINT_ERR(tag,errCode) \
+{\
+	char err[256]; \
+	sprintf(err, "%s  Error Code: %d\n", tag, errCode, WSAGetLastError()); \
+	__LOG(err); \
+}
+
 client::client()
 {
 }
@@ -12,10 +20,10 @@ client::~client()
 	close();
 }
 
-int client::initForPort(int port,const char* serverAddr)
+int client::initForPort(int port, const char* serverAddr)
 {
 
-	m_port =port ;
+	m_port = port;
 	WORD wVersionRequested;
 
 	WSADATA wsaData;
@@ -54,7 +62,7 @@ int client::initForPort(int port,const char* serverAddr)
 	m_socket = socket(AF_INET, SOCK_DGRAM, 0);
 	const bool on = true;
 	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
-	u_long mode = 1; 
+	u_long mode = 1;
 	ioctlsocket(m_socket, FIONBIO, &mode);
 #endif
 	if (m_socket < 0)
@@ -68,12 +76,12 @@ int client::initForPort(int port,const char* serverAddr)
 #ifdef TCP_CONN
 	assert(serverAddr!=NULL);
 #else
-	if (serverAddr!=NULL)
+	if (serverAddr != NULL)
 		m_addrSvr.sin_addr.S_un.S_addr = inet_addr(serverAddr);
 	else
 	{
-		setsockopt( m_socket, SOL_SOCKET, SO_BROADCAST, (const char *) &on, sizeof(int));
-		m_addrSvr.sin_addr.S_un.S_addr=htonl(INADDR_BROADCAST);
+		setsockopt(m_socket, SOL_SOCKET, SO_BROADCAST, (const char *)&on, sizeof(int));
+		m_addrSvr.sin_addr.S_un.S_addr = htonl(INADDR_BROADCAST);
 
 	}
 #endif
@@ -90,7 +98,7 @@ int client::initForPort(int port,const char* serverAddr)
 	return true;
 }
 
-void client::sendPacket(char* data,int size)
+void client::sendPacket(char* data, int size)
 {
 
 	int len = sizeof(sockaddr);
@@ -99,18 +107,18 @@ void client::sendPacket(char* data,int size)
 	{
 
 #ifdef TCP_CONN
-	
+
 		result = send(m_socket, data, size, 0);
 
 #else
-		result=sendto(m_socket, data, size, 0, (sockaddr*)&m_addrSvr, len);
+		result = sendto(m_socket, data, size, 0, (sockaddr*)&m_addrSvr, len);
 		if (result <= 0)
 		{
 			std::cerr << "Error in sending data" << std::endl;
 		}
 #endif
 	}
-}	
+}
 
 
 bool client::getPacket(sockaddr& from, void *data, int &size, int maxSize)
@@ -131,7 +139,7 @@ bool client::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 		else
 		{
 			//PRINT_ERR("Error in Receiving Data", WSAGetLastError());
-			std::cerr << "Error in Receiving Data "<<WSAGetLastError();
+			std::cerr << "Error in Receiving Data " << WSAGetLastError();
 
 		}
 	}
@@ -139,7 +147,7 @@ bool client::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 	{
 
 		//PRINT_ERR("Error in Socket", WSAGetLastError());
-		std::cerr<<"Error in Socket"<<WSAGetLastError();
+		std::cerr << "Error in Socket" << WSAGetLastError();
 	}
 	return true;
 }

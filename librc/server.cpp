@@ -2,8 +2,8 @@
 #include "server.h"
 #include <iostream>
 
-server::server(int port):
-	m_port(port)
+server::server(int port) :
+m_port(port)
 {
 	initForPort(port);
 }
@@ -27,12 +27,12 @@ bool server::initForPort(int portNumber)
 	wVersionRequested = MAKEWORD(2, 2);
 	err = WSAStartup(wVersionRequested, &wsaData);
 
-	if (err != 0) 
+	if (err != 0)
 		return false;
 
 
 	if (LOBYTE(wsaData.wVersion) != 2 ||
-		HIBYTE(wsaData.wVersion) != 2) 
+		HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
 		return false;
@@ -49,7 +49,7 @@ bool server::initForPort(int portNumber)
 	if (m_netSocket <= 0)
 	{
 		//PRINT_ERR();
-		std::cerr<< "Error in Creating Socket", WSAGetLastError();
+		std::cerr << "Error in Creating Socket", WSAGetLastError();
 
 	}
 	m_port = portNumber;
@@ -108,6 +108,23 @@ bool server::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 #else
 
 		size = recvfrom(m_netSocket, (char*)data, maxSize, 0, (sockaddr*)&from, &len);
+
+		fd_set fdset;
+		FD_ZERO(&fdset);
+		FD_SET(m_netSocket, &fdset);
+
+		struct timeval tv;
+		tv.tv_sec = 0;
+		tv.tv_usec = 0;
+
+		while (select(static_cast<int>(m_netSocket)+1, &fdset, 0L, 0L, &tv))
+		{
+			if (FD_ISSET(m_netSocket, &fdset))
+			{
+				recvfrom(m_netSocket, (char *)data, maxSize, 0, (sockaddr*)&from, &size);
+			}
+		}
+
 #endif
 		if (size != -1)
 		{
@@ -118,7 +135,7 @@ bool server::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 		{
 
 			//print_err("error in receiving data", WSAGetLastError());
-			std::cerr<<"error in receiving data: "<<WSAGetLastError();
+			std::cerr << "error in receiving data: " << WSAGetLastError();
 			return false;
 		}
 	}
@@ -156,14 +173,14 @@ bool server::sendPacket(sockaddr to, void *data, int size, int maxSize)
 		else
 		{
 			//PRINT_ERR("Error Sending Data", WSAGetLastError());
-			std::cerr << "Error Sending Data "<<WSAGetLastError();
+			std::cerr << "Error Sending Data " << WSAGetLastError();
 			return false;
 		}
 	}
 	else
 	{
 		//PRINT_ERR("Error In Socket", WSAGetLastError());
-		std::cerr<<"Error In Socket "<<WSAGetLastError();
+		std::cerr << "Error In Socket " << WSAGetLastError();
 		return false;
 
 	}
