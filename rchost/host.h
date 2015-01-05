@@ -7,17 +7,13 @@
 
 #include "stdafx.h"
 #include <Windows.h>
+#include <map>
 #include <memory>
 #include "server.h"
 #include "rc_common.h"
-#include <OpenThreads\Thread>
-#include <OpenThreads\Mutex>
-#include <OpenThreads\\Atomic>
-#include <map>
-class HOST_OPERATOR;
-static OpenThreads::Mutex* g_hostMutex = NULL;
+#include "rcthread.h"
 //Abstract of a class for finishing the tasks assigned to the host.
-class HOST_OPERATOR_API 
+class HOST_OPERATOR_API:public rcmutex
 {
 
 public:
@@ -47,8 +43,11 @@ public:
 
 	const char* getPath(std::string filename);
 	const char* getArg(std::string filename);
-	const char* getName();
+	void saveHostName(const char* hostname);
+	const char* getHostName();
+	void saveAdapter(const char* addr);
 	const char* getPrimaryAdapter();
+	void saveHostent(const hostent* host);
 	const hostent* getHostent();
 protected:
 	HOST_OPERATOR()
@@ -65,30 +64,33 @@ private:
 	std::vector<std::string> m_vecClients;
 };
 
-//Threads to serve the clients.
-class HOST_SLAVE 
-	:public OpenThreads::Thread
+//For each host thread,we need a handler to finish message handling routines.
+class HOST_MSGHANDLER :public THREAD,public rcmutex
 {
 
 public:
-	HOST_SLAVE(const HOST_MSG* msg);
+	HOST_MSGHANDLER(const HOST_MSG* msg);
 	virtual void handle() const;
 	virtual void run();
-	const OpenThreads::Mutex* getMutex() const;
 protected:
 	void syncTime() const;
-	virtual void initMutex(OpenThreads::Mutex* mutex);
-	std::auto_ptr<OpenThreads::Mutex> m_mutex;
 	std::auto_ptr<HOST_MSG> m_taskMsg;
 };
 
-class HOST:protected server,public OpenThreads::Thread
+//For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
+class HOST_LISTENER : protected server,public THREAD,rcmutex
+{
+public:
+	HOST_LISTENER(const int port);
+	virtual void run();
+};
+
+class HOST:protected server,public THREAD,rcmutex
 {
 public:
 	HOST(const int port);
 	~HOST()
 	{
-					
 	}
 	virtual void run();
 	void queryHostInfo(HOST_OPERATOR* ope);
@@ -96,7 +98,6 @@ public:
 	const hostent* getHostent();
 private:
 	int m_port;
-	
 };
 typedef std::map<std::string, std::string>::iterator HOST_MAP_ITER;
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;

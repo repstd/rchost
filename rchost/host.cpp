@@ -9,13 +9,13 @@
 #include "rc_common.h"
 
 #ifdef _LOG 
-	#define HOST_LOG_FILENAME "./host.log"
-	#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
-	#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+#define HOST_LOG_FILENAME "./host.log"
+#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
+#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
 #else
-	#define HOST_LOG_FILENAME 
-	#define _LOG_INIT_HOST
-	#define _LOG_FORMAT_HOST(format,data,...) 
+#define HOST_LOG_FILENAME 
+#define _LOG_INIT_HOST
+#define _LOG_FORMAT_HOST(format,data,...) 
 
 #endif
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
@@ -23,8 +23,10 @@ void wcharTochar(const wchar_t *wchar, char *chr, int length)
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
 }
 
-HOST_OPERATOR_API::HOST_OPERATOR_API()
+HOST_OPERATOR_API::HOST_OPERATOR_API():
+rcmutex()
 {
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	return;
 }
 
@@ -49,6 +51,7 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
 
 {
+	lock();
 	std::cout << filename << " " << path << " " << args << std::endl;
 	HOST_INFO_ITER iter;
 	iter = m_vecProgInfo.find(filename);
@@ -61,7 +64,10 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 		GetExitCodeProcess(oldInfo.hProcess, &dwExitCode);
 		std::cout << "status of forked process: " << dwExitCode << std::endl;
 		if (dwExitCode == STILL_ACTIVE)
+		{
+			unlock();
 			return ERROR_SERVICE_EXISTS;
+		}
 		else
 		{
 			CloseHandle(oldInfo.hProcess);
@@ -115,12 +121,14 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 	MultiByteToWideChar(CP_UTF8, 0, args, strlen(args), wArgs, strlen(args));
 	if (CreateProcess(_T("C://Windows//System32//calc.exe"), NULL, 0, 0, false, 0, 0, curDir, &si, &pi) != ERROR_SUCCESS)
 	{
+		unlock();
 		return GetLastError();
 	}
 #else
 	//if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, const_cast<char*>(curDir.c_str()), &si, &pi))
 	if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, curDir, &si, &pi))
 	{
+		unlock();
 		return GetLastError();
 	}
 	m_vecProgInfo[filename.c_str()] = pi;
@@ -130,7 +138,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 		std::cout << iter->first << " " << iter->second.dwProcessId << std::endl;
 #endif
 #endif
-
+	unlock();
 	return ERROR_SUCCESS;
 }
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
@@ -155,17 +163,22 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded
 }
 DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 {
+	lock();
 	HOST_INFO_ITER iter;
 	iter = m_vecProgInfo.find(filename);
 	if (iter == m_vecProgInfo.end())
 	{
+		unlock();
 		return ERROR_NOT_FOUND;
 	}
 
 	PROCESS_INFORMATION pi = iter->second;
 
 	if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
+	{
+		unlock();
 		return GetLastError();
+	}
 	DWORD dwExitCode = 0;
 	GetExitCodeProcess(pi.hProcess, &dwExitCode);
 	if (dwExitCode == STILL_ACTIVE)
@@ -181,6 +194,7 @@ DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 	CloseHandle(pi.hThread);
 
 	m_vecProgInfo.erase(iter);
+	unlock();
 	return ERROR_SUCCESS;
 
 }
@@ -234,7 +248,7 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 		return 0;
 	char strINIPath[MAX_PATH];
 	_fullpath(strINIPath, config, MAX_PATH);
-	
+
 	if (GetFileAttributes(strINIPath) == 0xFFFFFFFF)
 	{
 
@@ -278,10 +292,19 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 	return 0;
 }
 
-
-const char* HOST_OPERATOR::getName()
+void HOST_OPERATOR::saveHostName(const char* hostname)
+{
+	if (hostname != NULL)
+		strcpy(m_hostname, hostname);
+}
+const char* HOST_OPERATOR::getHostName()
 {
 	return m_hostname;
+}
+void HOST_OPERATOR::saveAdapter(const char* addr)
+{
+	if (addr != NULL)
+		m_vecAdapter.push_back(addr);
 }
 const char* HOST_OPERATOR::getPrimaryAdapter()
 {
@@ -292,20 +315,27 @@ const char* HOST_OPERATOR::getPrimaryAdapter()
 	}
 	return m_vecAdapter[0].c_str();
 }
-
+void HOST_OPERATOR::saveHostent(const hostent* host)
+{
+	if (host != NULL)
+		m_host = std::auto_ptr<hostent>(const_cast<hostent*>(host));
+}
 const hostent* HOST_OPERATOR::getHostent()
 {
 	return m_host.get();
 }
-HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
-:OpenThreads::Thread()
+
+HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg):THREAD(), rcmutex()
 {
-	initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_NORMAL));
+	//use a normal mutex instead of a recursive one.
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+
+	//Assign the server a msg to handle
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-void HOST_SLAVE::syncTime() const
+void HOST_MSGHANDLER::syncTime() const
 {
-	if (m_taskMsg->_elapseTime< 0.000001)
+	if (m_taskMsg->_elapseTime < 0.000001)
 		return;
 	FILETIME masterFileTime = m_taskMsg->_time;
 	SYSTEMTIME curSysTime;
@@ -333,52 +363,61 @@ void HOST_SLAVE::syncTime() const
 	_STD_PRINT_TIME(curSysTime);
 
 #ifdef _LOG
+
 #endif
 }
-void HOST_SLAVE::handle() const
+void HOST_MSGHANDLER::handle() const
 {
+	
 	syncTime();
 	if (strstr(m_taskMsg->_filename, "cegui") == 0)
 		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, false);
 	else
 		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, true);
 }
-void HOST_SLAVE::run()
+void HOST_MSGHANDLER::run()
 {
-	m_mutex->lock();
-
+	lock();
 	handle();
-
-	m_mutex->unlock();
-}
-void HOST_SLAVE::initMutex(OpenThreads::Mutex* mutex)
-{
-	m_mutex = std::auto_ptr<OpenThreads::Mutex>(mutex);
-}
-const OpenThreads::Mutex* HOST_SLAVE::getMutex() const
-{
-	return m_mutex.get();
+	unlock();
 }
 
-HOST::HOST(const int port)
-:server(port),
-	OpenThreads::Thread()
+HOST_LISTENER::HOST_LISTENER(int port) :server(port), THREAD(), rcmutex()
 {
-		queryHostInfo(HOST_OPERATOR::instance());
+
+}
+void HOST_LISTENER::run()
+{
+	char msgRcv[_MAX_DATA_SIZE];
+	sockaddr client;
+	int sizeRcv;
+	while (isSocketOpen())
+	{
+		sizeRcv = -1;
+		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
+		if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
+			__STD_PRINT("%s\n", msgRcv);
+	}
+
+}
+
+HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
+{
+	queryHostInfo(HOST_OPERATOR::instance());
 }
 const char* HOST::getName()
 {
-	return HOST_OPERATOR::instance()->getName();
+	return HOST_OPERATOR::instance()->getHostName();
 }
 const hostent* HOST::getHostent()
 {
 	return HOST_OPERATOR::instance()->getHostent();
 }
-	
+
 void HOST::queryHostInfo(HOST_OPERATOR* ope)
 {
 
-	if (ope->getHostent()!=NULL)
+	if (ope->getHostent() != NULL)
 	{
 		return;
 	}
@@ -386,30 +425,35 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 	int error = gethostname(name, MAX_PATH);
 	if (error != 0)
 	{
-		//_LOG_FORMAT_HOST("Error in Querying Host.Error Code:%d\n", error);
+		_LOG_FORMAT_HOST("Error in Querying Host.Error Code:%d\n", error);
 		__STD_PRINT("Error in Querying Host.Error Code:%d\n", WSAGetLastError());
 		return;
 	}
 	__STD_PRINT("host: %s\n", name);
+
+	ope->saveHostName(name);
+
 	hostent* hst = gethostbyname(name);
+
 	if (hst == NULL)
 	{
 		_LOG_FORMAT_HOST("%s\n", "Error in getting host info");
 		return;
 	}
-	//m_host = std::auto_ptr<hostent>(hst);
+	ope->saveHostent(hst);
+
 	if (hst->h_addrtype == AF_INET)
 	{
 		__STD_PRINT("AddressType: %s, IPV4\n", "AF_INET");
 		int i = 0;
 		char saddr[MAX_PATH];
-		
+
 		while (hst->h_addr_list[i] != NULL)
 		{
-			char* addr=inet_ntoa(*(in_addr*)hst->h_addr_list[i++]);
+			char* addr = inet_ntoa(*(in_addr*)hst->h_addr_list[i++]);
 			__STD_PRINT("Adapter: %s\n", addr);
-			//if (addr != NULL)
-			//	m_vecAdapter.push_back(addr);
+			if (addr != NULL)
+				ope->saveAdapter(addr);
 		}
 	}
 }
@@ -418,23 +462,20 @@ void HOST::run()
 	char msgRcv[_MAX_DATA_SIZE];
 	sockaddr client;
 	int sizeRcv;
-	//HOST_OPERATOR::instance()->queryHostInfo();
-#ifdef _LOG
 	_LOG_INIT_HOST
-#endif
+	char feedback[30];
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 		if (sizeRcv == _MAX_DATA_SIZE)
 		{
-			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			std::auto_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
 		}
-		
-	
+		strcpy(feedback, getName());
+		sendPacket(client, feedback, strlen(feedback), 31);
 	}
-
 }

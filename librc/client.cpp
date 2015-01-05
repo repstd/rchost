@@ -132,15 +132,10 @@ bool client::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 		size = recvfrom(m_socket, (char*)data, maxSize, 0, (sockaddr*)&from, &len);
 
 #endif
-		if (size != -1)
-		{
-
-		}
-		else
+		if (size==-1)
 		{
 			//PRINT_ERR("Error in Receiving Data", WSAGetLastError());
 			std::cerr << "Error in Receiving Data " << WSAGetLastError();
-
 		}
 	}
 	else

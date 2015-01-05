@@ -54,7 +54,7 @@ bool server::initForPort(int portNumber)
 	}
 	m_port = portNumber;
 	SOCKADDR_IN addr;
-	
+
 	u_long mode = 0;
 	ioctlsocket(m_netSocket, FIONBIO, &mode);
 
@@ -123,29 +123,21 @@ bool server::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 		{
 			if (FD_ISSET(m_netSocket, &fdset))
 			{
-				recvfrom(m_netSocket, (char *)data, maxSize, 0, (sockaddr*)&from, &size);
+				size = recvfrom(m_netSocket, (char *)data, maxSize, 0, (sockaddr*)&from, &len);
 			}
 		}
-
-#endif
-		if (size != -1)
+		if (size==-1)
 		{
-
-
-		}
-		else
-		{
-
-			//print_err("error in receiving data", WSAGetLastError());
 			std::cerr << "error in receiving data: " << WSAGetLastError();
 			return false;
 		}
+#endif
 	}
 	else
 	{
 
 		//print_err("error in socket", WSAGetLastError());
-		std::cerr<<"error in socket: "<<WSAGetLastError();
+		std::cerr << "error in socket: " << WSAGetLastError();
 		return false;
 
 	}
@@ -168,11 +160,7 @@ bool server::sendPacket(sockaddr to, void *data, int size, int maxSize)
 #else
 		result = sendto(m_netSocket, (char*)data, size, 0, (sockaddr*)&to, len);
 #endif
-		if (result != SOCKET_ERROR)
-		{
-
-		}
-		else
+		if (result==SOCKET_ERROR)
 		{
 			//PRINT_ERR("Error Sending Data", WSAGetLastError());
 			std::cerr << "Error Sending Data " << WSAGetLastError();
