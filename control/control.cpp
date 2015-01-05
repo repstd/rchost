@@ -6,6 +6,7 @@
 #include "rc_common.h"
 #include "rcthread.h"
 #include "../rchost/host.h"
+#include "ctrlhost.h"
 #include <stdio.h>
 #include <memory>
 #include <iostream>
@@ -30,6 +31,12 @@ public:
 			m_client->getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 			if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
 				__STD_PRINT("%s\n", msgRcv);
+			char* delimeter = strstr(msgRcv, "#");
+			if (delimeter)
+			{
+				*delimeter = '\0';
+				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter +1 );
+			}
 			memset(msgRcv, 0, _MAX_DATA_SIZE);
 		}
 
@@ -59,7 +66,7 @@ int main(int argc, char *argv[])
 	}
 	else
 		return 0;
-
+	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ip");
 	std::auto_ptr<_MSG> msg(new _MSG());
 	msg->_operation = _OPEN;
 	//msg->_prog = _MANHATTAN;
@@ -71,7 +78,6 @@ int main(int argc, char *argv[])
 	std::cout << "e.g: type 'osgSync 1(open_close_flag) 1(elapse_time_val)' to open osgSync.exe with time synchronized oand 'osgSync 0 1' to close." << std::endl;
 	while (++cnt < 50)
 	{
-
 		writeArgs(msg.get(), buf);
 		scanf("%s %d %d", msg->_filename, &op, &et);
 		if (op == 0)
@@ -86,7 +92,6 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		msg->_elapseTime = et;
-
 		SYSTEMTIME systime;
 		FILETIME  filetime;
 		GetLocalTime(&systime);

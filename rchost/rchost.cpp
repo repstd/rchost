@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 	if (argc > 2)
 		port = atoi(argv[2]);
 
-	HOST_OPERATOR::instance()->loadPathMap("control.ini");
+	HOST_OPERATOR::instance()->loadConfig("control.ini");
 	std::auto_ptr<HOST> host(new HOST(port));
 	host->start();
 

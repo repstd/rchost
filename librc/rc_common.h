@@ -29,9 +29,12 @@
 
 #define __STD_PRINT(fmt,data) std::printf(fmt,data);
 
-#define _FMT_TIME "%02d,%02d,%02d,%02d,%02d,%02d,%02d,%02d\n"
-#define _STD_PRINT_TIME(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
+#define _FMT_TIME "%02d-%02d-%02d %02d:%02d:%02d:%02d\n"
+#define _STD_PRINT_TIME(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDay,systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define __LOG__FORMAT_TIME(filename,systime) __LOG_FORMAT(filename,_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
+
+#define _FMT_TIME_PLAIN "%02d %02d %02d %02d %2d %02d %02d %02d\n"
+#define _STD_PRINT_TIME_PLAIN(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 
 enum EVENT
 {

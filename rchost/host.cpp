@@ -58,11 +58,14 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 	//Make sure no duplicated task is to be created.
 	if (iter != m_vecProgInfo.end())
 	{
-		std::cout << "duplicated task is to pending." << std::endl;
+		__STD_PRINT("%s\n", "duplicated task is to pending.");
+
 		PROCESS_INFORMATION oldInfo = iter->second;
 		DWORD dwExitCode = 0;
 		GetExitCodeProcess(oldInfo.hProcess, &dwExitCode);
-		std::cout << "status of forked process: " << dwExitCode << std::endl;
+
+		__STD_PRINT("status of forked process: %d\n",dwExitCode);
+
 		if (dwExitCode == STILL_ACTIVE)
 		{
 			unlock();
@@ -241,7 +244,7 @@ const char* HOST_OPERATOR::getArg(std::string filename)
 	else
 		return iter->second.c_str();
 }
-DWORD HOST_OPERATOR::loadPathMap(const char* config)
+DWORD HOST_OPERATOR::loadConfig(const char* config)
 {
 	m_fConfig = fopen(config, "r");
 	if (m_bIsDataLoaded)
@@ -335,13 +338,13 @@ HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg):THREAD(), rcmutex()
 }
 void HOST_MSGHANDLER::syncTime() const
 {
-	if (m_taskMsg->_elapseTime < 0.000001)
+	if (m_taskMsg->_elapseTime < 0.001)
 		return;
 	FILETIME masterFileTime = m_taskMsg->_time;
 	SYSTEMTIME curSysTime;
 	GetLocalTime(&curSysTime);
-
-	_STD_PRINT_TIME(curSysTime);
+	
+	__STD_PRINT("#%d: ", 1); _STD_PRINT_TIME(curSysTime);
 
 	FILETIME curFileTime;
 	SystemTimeToFileTime(&curSysTime, &curFileTime);
@@ -355,21 +358,18 @@ void HOST_MSGHANDLER::syncTime() const
 
 	if (sleepTime < 0)
 		sleepTime = 0;
-	if (sleepTime>5)
-		sleepTime = 5;
-	Sleep(sleepTime*1000.0);
+	if (sleepTime>5*1000.0)
+		sleepTime = 5*1000.0;
+	Sleep(sleepTime);
 
 	GetLocalTime(&curSysTime);
-	_STD_PRINT_TIME(curSysTime);
-
-#ifdef _LOG
-
-#endif
+	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 }
 void HOST_MSGHANDLER::handle() const
 {
 	
 	syncTime();
+	
 	if (strstr(m_taskMsg->_filename, "cegui") == 0)
 		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, false);
 	else
@@ -387,15 +387,18 @@ HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
 {
 	queryHostInfo(HOST_OPERATOR::instance());
 }
-const char* HOST::getName()
+const char* HOST::getName() const
 {
 	return HOST_OPERATOR::instance()->getHostName();
 }
-const hostent* HOST::getHostent()
+const hostent* HOST::getHostent() const
 {
 	return HOST_OPERATOR::instance()->getHostent();
 }
-
+const char* HOST::getIP() const
+{
+	return HOST_OPERATOR::instance()->getPrimaryAdapter();
+}
 void HOST::queryHostInfo(HOST_OPERATOR* ope)
 {
 
@@ -438,6 +441,7 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 				ope->saveAdapter(addr);
 		}
 	}
+
 }
 void HOST::run()
 {
@@ -445,7 +449,7 @@ void HOST::run()
 	sockaddr client;
 	int sizeRcv;
 	_LOG_INIT_HOST
-	char feedback[30];
+	char feedback[64];
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
@@ -457,7 +461,11 @@ void HOST::run()
 			slave->start();
 			slave.release();
 		}
+
 		strcpy(feedback, getName());
-		sendPacket(client, feedback, strlen(feedback), 31);
+		strcat(feedback, "#");
+		strcat(feedback, getIP());
+		sendPacket(client, feedback, strlen(feedback), 64);
+	
 	}
 }

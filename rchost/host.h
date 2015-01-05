@@ -24,14 +24,17 @@ public:
 protected:
 	DWORD createProgram(std::string filename,std::string path, const char* curDir,std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
+
 	//use pathes stored in a configuration file.
-	virtual DWORD loadPathMap(const char* filename) = 0;
+	virtual DWORD loadConfig(const char* filename) = 0;
+
 	DWORD createProgram(std::string filename,bool isCurDirNeeded);
 	DWORD closeProgram(std::string filename);
 	std::map<std::string, std::string> m_mapNamePath;
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
 	FILE* m_fConfig;
+
 };
 
 //Concrete class for host_operator.
@@ -40,7 +43,7 @@ class HOST_OPERATOR
 {
 public:
 	static HOST_OPERATOR* instance();
-	virtual DWORD loadPathMap(const char* filename);
+	virtual DWORD loadConfig(const char* filename);
 
 	const char* getPath(std::string filename);
 	const char* getArg(std::string filename);
@@ -57,6 +60,7 @@ protected:
 		m_bIsDataLoaded = false;
 	}
 private:
+	bool m_bQueit;
 	bool m_bIsDataLoaded;	
 	//Host information
 	char m_hostname[MAX_PATH];
@@ -89,8 +93,9 @@ public:
 	}
 	virtual void run();
 	void queryHostInfo(HOST_OPERATOR* ope);
-	const char* getName();
-	const hostent* getHostent();
+	const char* getName() const;
+	const hostent* getHostent() const;
+	const char* getIP() const;
 private:
 	int m_port;
 };
