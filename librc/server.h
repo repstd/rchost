@@ -1,10 +1,10 @@
 #pragma once
 #include "stdafx.h"
-#include <OpenThreads\Thread>
+#include "rcsocket.h"
 #ifndef _SERVER_H
 #define _SERVER_H
 
-class server
+class server:public rcsocket
 {
 public:
 	server(int port);
@@ -12,15 +12,7 @@ public:
 
 public:
 	bool initForPort(int portNumber);
-	int getPort();
-	bool isSocketOpen();
-
-	bool getPacket(sockaddr& from, void *data, int &size, int maxSize);
-	bool sendPacket(sockaddr to, void *data, int size, int maxSize);
-
-private:
-	int m_port;
-	SOCKET m_netSocket;
+	virtual int initSocket(int port, ULONG S_addr);
 
 };
 #endif

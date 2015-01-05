@@ -2,8 +2,7 @@
 #include "server.h"
 #include <iostream>
 
-server::server(int port) :
-m_port(port)
+server::server(int port)
 {
 	initForPort(port);
 }
@@ -11,58 +10,31 @@ m_port(port)
 
 server::~server()
 {
-	if (m_netSocket)
-		closesocket(m_netSocket);
 }
 
-bool server::initForPort(int portNumber)
+int server::initSocket(int port, ULONG S_addr)
 {
 
-	WORD wVersionRequested;
-
-	WSADATA wsaData;
-
-	int err;
-
-	wVersionRequested = MAKEWORD(2, 2);
-	err = WSAStartup(wVersionRequested, &wsaData);
-
-	if (err != 0)
-		return false;
-
-
-	if (LOBYTE(wsaData.wVersion) != 2 ||
-		HIBYTE(wsaData.wVersion) != 2)
-	{
-		WSACleanup();
-		return false;
-	}
+	m_port = port;
 #ifdef TCP_CONN
-	m_netSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 #else
-	m_netSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	m_socket = socket(AF_INET, SOCK_DGRAM, 0);
 
 #endif
 	const bool on = 1;
-	setsockopt(m_netSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
+	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
 
-	if (m_netSocket <= 0)
+	if (m_socket <= 0)
 	{
-		//PRINT_ERR();
-		std::cerr << "Error in Creating Socket", WSAGetLastError();
-
+		__STD_PRINT("Error in Creating Socket.ErrorCode: %d\n ", GetLastError());
 	}
-	m_port = portNumber;
-	SOCKADDR_IN addr;
 
 	u_long mode = 0;
-	ioctlsocket(m_netSocket, FIONBIO, &mode);
-
-	addr.sin_family = AF_INET;
-
-	addr.sin_port = htons((u_short)m_port);
-
-	addr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+	ioctlsocket(m_socket, FIONBIO, &mode);
+	m_addrSvr.sin_family = AF_INET;
+	m_addrSvr.sin_port = htons((u_short)m_port);
+	m_addrSvr.sin_addr.S_un.S_addr = S_addr;
 
 	int len = sizeof(sockaddr);
 
@@ -78,102 +50,20 @@ bool server::initForPort(int portNumber)
 		return 0;
 	}
 #else
-	if (bind(m_netSocket, (SOCKADDR *)&addr, len) == SOCKET_ERROR)
+	if (bind(m_socket, (SOCKADDR *)&m_addrSvr, len) == SOCKET_ERROR)
 	{
 		//PRINT_ERR();
-		std::cerr << "Error in Binding Socket", WSAGetLastError();
+		__STD_PRINT("Error in Binding Socket.ErrorCode: %d\n ", GetLastError());
 	}
 #endif
 	return true;
-}
 
-int server::getPort()
-{
-	return m_port;
 }
-bool server::isSocketOpen()
-{
-	return ([](int socket){ return socket > 0; })(m_netSocket);
-}
-bool server::getPacket(sockaddr& from, void *data, int &size, int maxSize)
+bool server::initForPort(int portNumber)
 {
 
-	int len = sizeof(sockaddr);
-	if (m_netSocket)
-	{
-#ifdef tcp_conn
-		m_sclient = accept(m_netsocket, (sockaddr *)&from, &len);
-		if (m_sclient<=0)
-			return false;
-
-		size = recv(m_sclient, (char*)data, maxsize, 0);
-#else
-
-		size = recvfrom(m_netSocket, (char*)data, maxSize, 0, (sockaddr*)&from, &len);
-
-		fd_set fdset;
-		FD_ZERO(&fdset);
-		FD_SET(m_netSocket, &fdset);
-
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
-
-		while (select(static_cast<int>(m_netSocket)+1, &fdset, 0L, 0L, &tv))
-		{
-			if (FD_ISSET(m_netSocket, &fdset))
-			{
-				size = recvfrom(m_netSocket, (char *)data, maxSize, 0, (sockaddr*)&from, &len);
-			}
-		}
-		if (size==-1)
-		{
-			std::cerr << "error in receiving data: " << WSAGetLastError();
-			return false;
-		}
-#endif
-	}
-	else
-	{
-
-		//print_err("error in socket", WSAGetLastError());
-		std::cerr << "error in socket: " << WSAGetLastError();
-		return false;
-
-	}
-	return true;
+	return initSocket(portNumber, htonl(INADDR_ANY));
 
 }
-bool server::sendPacket(sockaddr to, void *data, int size, int maxSize)
-{
 
 
-	int len = sizeof(to);
-	int result = -1;
-	if (m_netSocket)
-	{
-#ifdef TCP_CONN
-		if (m_sClient == INVALID_SOCKET)
-			return false;
-		result = send(m_sClient, (char*)data, size, 0);
-
-#else
-		result = sendto(m_netSocket, (char*)data, size, 0, (sockaddr*)&to, len);
-#endif
-		if (result==SOCKET_ERROR)
-		{
-			//PRINT_ERR("Error Sending Data", WSAGetLastError());
-			std::cerr << "Error Sending Data " << WSAGetLastError();
-			return false;
-		}
-	}
-	else
-	{
-		//PRINT_ERR("Error In Socket", WSAGetLastError());
-		std::cerr << "Error In Socket " << WSAGetLastError();
-		return false;
-
-	}
-	return true;
-
-}

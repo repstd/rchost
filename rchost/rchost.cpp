@@ -26,10 +26,10 @@ int main(int argc, char* argv[])
 	std::auto_ptr<HOST> host(new HOST(port));
 	host->start();
 
-	std::auto_ptr<HOST> host2(new HOST(20715));
-	host2->start();
+	//std::auto_ptr<HOST> host2(new HOST(20715));
+	//host2->start();
 
-	host2->join();
+	//host2->join();
 	host->join();
 	return 0;
 }

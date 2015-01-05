@@ -87,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="client.h" />
+    <ClInclude Include="rcsocket.h" />
     <ClInclude Include="rcthread.h" />
     <ClInclude Include="rc_common.h" />
     <ClInclude Include="server.h" />
@@ -95,6 +96,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="client.cpp" />
+    <ClCompile Include="rcsocket.cpp" />
     <ClCompile Include="rcthread.cpp" />
     <ClCompile Include="rc_common.cpp" />
     <ClCompile Include="server.cpp" />

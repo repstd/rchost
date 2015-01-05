@@ -14,3 +14,4 @@
 // TODO: reference additional headers your program requires here
 #include <Winsock2.h>
 #include "Winuser.h"
+#include "rc_common.h"

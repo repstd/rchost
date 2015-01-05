@@ -382,24 +382,6 @@ void HOST_MSGHANDLER::run()
 	unlock();
 }
 
-HOST_LISTENER::HOST_LISTENER(int port) :server(port), THREAD(), rcmutex()
-{
-
-}
-void HOST_LISTENER::run()
-{
-	char msgRcv[_MAX_DATA_SIZE];
-	sockaddr client;
-	int sizeRcv;
-	while (isSocketOpen())
-	{
-		sizeRcv = -1;
-		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
-		if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
-			__STD_PRINT("%s\n", msgRcv);
-	}
-
-}
 
 HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
 {

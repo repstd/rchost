@@ -36,6 +36,9 @@
     <ClInclude Include="rcthread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rcsocket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rcthread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rcsocket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

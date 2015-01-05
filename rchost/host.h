@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include "server.h"
+#include "client.h"
 #include "rc_common.h"
 #include "rcthread.h"
 //Abstract of a class for finishing the tasks assigned to the host.
@@ -78,12 +79,6 @@ protected:
 };
 
 //For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
-class HOST_LISTENER : protected server,public THREAD,rcmutex
-{
-public:
-	HOST_LISTENER(const int port);
-	virtual void run();
-};
 
 class HOST:protected server,public THREAD,rcmutex
 {
