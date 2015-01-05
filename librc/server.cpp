@@ -54,8 +54,10 @@ bool server::initForPort(int portNumber)
 	}
 	m_port = portNumber;
 	SOCKADDR_IN addr;
+	
 	u_long mode = 0;
 	ioctlsocket(m_netSocket, FIONBIO, &mode);
+
 	addr.sin_family = AF_INET;
 
 	addr.sin_port = htons((u_short)m_port);

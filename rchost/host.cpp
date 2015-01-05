@@ -7,11 +7,15 @@
 #include <iterator>
 #include <vector>
 #include "rc_common.h"
-#ifdef _LOG
 
-#define HOST_LOG_FILENAME "./host.log"
-#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
-#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+#ifdef _LOG 
+	#define HOST_LOG_FILENAME "./host.log"
+	#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
+	#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+#else
+	#define HOST_LOG_FILENAME 
+	#define _LOG_INIT_HOST
+	#define _LOG_FORMAT_HOST(format,data,...) 
 
 #endif
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
@@ -204,11 +208,8 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-	if (g_hostOperator == NULL)
-	{
-		g_hostOperator = new HOST_OPERATOR;
-	}
-	return g_hostOperator;
+	static HOST_OPERATOR inst;
+	return &inst;
 }
 const char* HOST_OPERATOR::getPath(std::string filename)
 {
@@ -228,10 +229,12 @@ const char* HOST_OPERATOR::getArg(std::string filename)
 }
 DWORD HOST_OPERATOR::loadPathMap(const char* config)
 {
+	m_fConfig = fopen(config, "r");
 	if (m_bIsDataLoaded)
 		return 0;
 	char strINIPath[MAX_PATH];
 	_fullpath(strINIPath, config, MAX_PATH);
+	
 	if (GetFileAttributes(strINIPath) == 0xFFFFFFFF)
 	{
 
@@ -276,6 +279,24 @@ DWORD HOST_OPERATOR::loadPathMap(const char* config)
 }
 
 
+const char* HOST_OPERATOR::getName()
+{
+	return m_hostname;
+}
+const char* HOST_OPERATOR::getPrimaryAdapter()
+{
+	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
+	{
+		if (strncmp(iter->c_str(), "10.", 4) != -1)
+			return iter->c_str();
+	}
+	return m_vecAdapter[0].c_str();
+}
+
+const hostent* HOST_OPERATOR::getHostent()
+{
+	return m_host.get();
+}
 HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 :OpenThreads::Thread()
 {
@@ -284,7 +305,7 @@ HOST_SLAVE::HOST_SLAVE(const HOST_MSG* msg)
 }
 void HOST_SLAVE::syncTime() const
 {
-	if (m_taskMsg->_timeout < 0.000001)
+	if (m_taskMsg->_elapseTime< 0.000001)
 		return;
 	FILETIME masterFileTime = m_taskMsg->_time;
 	SYSTEMTIME curSysTime;
@@ -306,8 +327,7 @@ void HOST_SLAVE::syncTime() const
 		sleepTime = 0;
 	if (sleepTime>5)
 		sleepTime = 5;
-
-	Sleep(sleepTime);
+	Sleep(sleepTime*1000.0);
 
 	GetLocalTime(&curSysTime);
 	_STD_PRINT_TIME(curSysTime);
@@ -344,13 +364,61 @@ HOST::HOST(const int port)
 :server(port),
 	OpenThreads::Thread()
 {
+		queryHostInfo(HOST_OPERATOR::instance());
 }
+const char* HOST::getName()
+{
+	return HOST_OPERATOR::instance()->getName();
+}
+const hostent* HOST::getHostent()
+{
+	return HOST_OPERATOR::instance()->getHostent();
+}
+	
+void HOST::queryHostInfo(HOST_OPERATOR* ope)
+{
 
+	if (ope->getHostent()!=NULL)
+	{
+		return;
+	}
+	char name[MAX_PATH];
+	int error = gethostname(name, MAX_PATH);
+	if (error != 0)
+	{
+		//_LOG_FORMAT_HOST("Error in Querying Host.Error Code:%d\n", error);
+		__STD_PRINT("Error in Querying Host.Error Code:%d\n", WSAGetLastError());
+		return;
+	}
+	__STD_PRINT("host: %s\n", name);
+	hostent* hst = gethostbyname(name);
+	if (hst == NULL)
+	{
+		_LOG_FORMAT_HOST("%s\n", "Error in getting host info");
+		return;
+	}
+	//m_host = std::auto_ptr<hostent>(hst);
+	if (hst->h_addrtype == AF_INET)
+	{
+		__STD_PRINT("AddressType: %s, IPV4\n", "AF_INET");
+		int i = 0;
+		char saddr[MAX_PATH];
+		
+		while (hst->h_addr_list[i] != NULL)
+		{
+			char* addr=inet_ntoa(*(in_addr*)hst->h_addr_list[i++]);
+			__STD_PRINT("Adapter: %s\n", addr);
+			//if (addr != NULL)
+			//	m_vecAdapter.push_back(addr);
+		}
+	}
+}
 void HOST::run()
 {
 	char msgRcv[_MAX_DATA_SIZE];
 	sockaddr client;
 	int sizeRcv;
+	//HOST_OPERATOR::instance()->queryHostInfo();
 #ifdef _LOG
 	_LOG_INIT_HOST
 #endif
@@ -363,9 +431,10 @@ void HOST::run()
 			std::auto_ptr<HOST_SLAVE> slave(new HOST_SLAVE(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
-			slave->join();
 			slave.release();
 		}
-
+		
+	
 	}
+
 }

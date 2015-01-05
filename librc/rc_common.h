@@ -27,7 +27,7 @@
 	fclose(logfout); \
 }
 
-#define __STD_PRINT(fmt,data,...) std::printf(fmt,data);
+#define __STD_PRINT(fmt,data) std::printf(fmt,data);
 
 #define _FMT_TIME "%02d,%02d,%02d,%02d,%02d,%02d,%02d,%02d\n"
 #define _STD_PRINT_TIME(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
@@ -54,7 +54,7 @@ struct _MSG
 	char _filename[30];
 	int	 _size;
 	int  _argc;
-	int _timeout;
+	WORD _elapseTime;
 	FILETIME _time;
 	char _pBuf[_MSG_BUF_SIZE];
 	int  _pSize[_MSG_ARGC];

@@ -31,26 +31,27 @@ int main(int argc, char *argv[])
 	char buf[_MSG_BUF_SIZE];
 	int cnt = 0;
 	int op = 0;
-	WORD st= 0;
+	WORD et= 0;
 	std::cout << "Now input controlling instructions." << std::endl;
-	std::cout << "e.g: type 'osgSync 1(open_close_flag) 1(sync_time_val)' to open osgSync.exe with time synchronized oand 'osgSync 0 1' to close." << std::endl;
+	std::cout << "e.g: type 'osgSync 1(open_close_flag) 1(elapse_time_val)' to open osgSync.exe with time synchronized oand 'osgSync 0 1' to close." << std::endl;
 	while (++cnt<50)
 	{
 				
 		writeArgs(msg.get(), buf);
-		scanf("%s %d %d", msg->_filename,&op,&st);
+		scanf("%s %d %d", msg->_filename,&op,&et);
 		if (op==0)
 			msg->_operation = _CLOSE;
 		else if (op==1)
 			msg->_operation = _OPEN;
 		else
 				break;
-		if (st < 0)
+		if (et< 0)
 		{
-			std::cout << "Error:  The time value in which the slave programs are to be invoked should be no less than 0." << std::endl;
+			std::cout << "Error:  The elapse time in which the slave programs are to be invoked should be no less than 0." << std::endl;
 			continue;
 		}
-		msg->_timeout = st;
+		msg->_elapseTime= et;
+
 		SYSTEMTIME systime;
 		FILETIME  filetime;
 		GetLocalTime(&systime);
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
 		//_STD_PRINT_TIME(systime);
 
 		//Invoke the slaves in 5 seconds
-		systime.wSecond += st;
+		systime.wSecond += et;
 		if (systime.wSecond > 59)
 		{
 			systime.wSecond = 0;
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
 		msg->_time = filetime;
 
 		rc->sendPacket((char*)msg.get(), sizeof(_MSG ) );
-#if 0
+#if 1
 		char msgRcv[_MSG_BUF_SIZE];
 		sockaddr from;
 		int size = -1;

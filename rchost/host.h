@@ -12,9 +12,9 @@
 #include "rc_common.h"
 #include <OpenThreads\Thread>
 #include <OpenThreads\Mutex>
+#include <OpenThreads\\Atomic>
 #include <map>
 class HOST_OPERATOR;
-static HOST_OPERATOR* g_hostOperator = NULL;
 static OpenThreads::Mutex* g_hostMutex = NULL;
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API 
@@ -25,7 +25,6 @@ public:
 	~HOST_OPERATOR_API();
 	virtual DWORD handleProgram(std::string filename, const char op,bool isCurDirNeeded);
 protected:
-
 	DWORD createProgram(std::string filename,std::string path, const char* curDir,std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
 	//use pathes stored in a configuration file.
@@ -35,6 +34,7 @@ protected:
 	std::map<std::string, std::string> m_mapNamePath;
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
+	FILE* m_fConfig;
 };
 
 //Concrete class for host_operator.
@@ -44,8 +44,12 @@ class HOST_OPERATOR
 public:
 	static HOST_OPERATOR* instance();
 	virtual DWORD loadPathMap(const char* filename);
+
 	const char* getPath(std::string filename);
 	const char* getArg(std::string filename);
+	const char* getName();
+	const char* getPrimaryAdapter();
+	const hostent* getHostent();
 protected:
 	HOST_OPERATOR()
 		:HOST_OPERATOR_API()
@@ -53,7 +57,12 @@ protected:
 		m_bIsDataLoaded = false;
 	}
 private:
-	bool m_bIsDataLoaded;
+	bool m_bIsDataLoaded;	
+	//Host information
+	char m_hostname[MAX_PATH];
+	std::auto_ptr<hostent> m_host;
+	std::vector<std::string> m_vecAdapter;
+	std::vector<std::string> m_vecClients;
 };
 
 //Threads to serve the clients.
@@ -82,8 +91,12 @@ public:
 					
 	}
 	virtual void run();
+	void queryHostInfo(HOST_OPERATOR* ope);
+	const char* getName();
+	const hostent* getHostent();
 private:
 	int m_port;
+	
 };
 typedef std::map<std::string, std::string>::iterator HOST_MAP_ITER;
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;
