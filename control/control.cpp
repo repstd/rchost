@@ -23,6 +23,7 @@ public:
 	{
 
 		char msgRcv[_MAX_DATA_SIZE];
+		memset(msgRcv, 0, _MAX_DATA_SIZE);
 		sockaddr client;
 		int sizeRcv;
 		while (m_client->isSocketOpen())
@@ -35,8 +36,11 @@ public:
 			if (delimeter)
 			{
 				*delimeter = '\0';
-				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter +1 );
+				__DEBUG_PRINT("%s\n", msgRcv);
+				__DEBUG_PRINT("%s\n", delimeter + 1);
+				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
 			}
+				CTRLHOST_OPERATOR::instance()->updateConfig("clients.ini");
 			memset(msgRcv, 0, _MAX_DATA_SIZE);
 		}
 
@@ -66,7 +70,7 @@ int main(int argc, char *argv[])
 	}
 	else
 		return 0;
-	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ip");
+	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ini");
 	std::auto_ptr<_MSG> msg(new _MSG());
 	msg->_operation = _OPEN;
 	//msg->_prog = _MANHATTAN;

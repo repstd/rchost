@@ -29,6 +29,9 @@
 
 #define __STD_PRINT(fmt,data) std::printf(fmt,data);
 
+//#define __DEBUG_PRINT(fmt,data,...) __STD_PRINT(fmt,data)
+
+#define __DEBUG_PRINT(fmt,data,...) 
 #define _FMT_TIME "%02d-%02d-%02d %02d:%02d:%02d:%02d\n"
 #define _STD_PRINT_TIME(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDay,systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define __LOG__FORMAT_TIME(filename,systime) __LOG_FORMAT(filename,_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
