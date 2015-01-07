@@ -381,6 +381,9 @@ void HOST_MSGHANDLER::syncTime() const
 
 DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 {
+	/*
+	*Handle miscellaneous conditions for any possible programs here.
+	*/
 	HOST_MAP_ITER iter = m_mapNameAdditionInfo.find(filename);
 	bool isCurDirNeeded = false;
 	if (iter != m_mapNameAdditionInfo.end())
@@ -401,8 +404,10 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 					if (!m_vecPipebroadercaster[0]->isRunning())
 					{
 
-						__STD_PRINT("Start to signal the rcplayer for %d\n", getPort());
-						//start brocaster for signalling the  vlc player to  step frame by frame
+						__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
+						/*
+						*Start a brocaster for signalling the  vlc player to  step frame by frame
+						*/
 						m_vecPipebroadercaster[0]->start();
 					}
 					break;
@@ -423,16 +428,13 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 		if (strstr(iter->second.c_str(), "-s") != NULL)
 		{
 			//TODO:Specigy operatoin for slave prog.
-			__STD_PRINT("%s\n", "-s");
 		}
 		if (strstr(iter->second.c_str(), "-curDir") != NULL)
 		{
-			__STD_PRINT("%s\n", "-curDir");
 			isCurDirNeeded = true;
 		}
 		if (strstr(iter->second.c_str(), "-defaultDir") != NULL)
 		{
-			__STD_PRINT("%s\n", "-defaultDir");
 			isCurDirNeeded = false;
 		}
 	}
@@ -527,6 +529,9 @@ void HOST::run()
 		char feedback[64];
 
 	addPipeServer(_RC_PIPE_NAME);
+	/*
+	*Start a udp server to listening  a specified port for signaling the child processes.
+	*/
 
 	std::auto_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
@@ -537,11 +542,17 @@ void HOST::run()
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 		if (sizeRcv == _MAX_DATA_SIZE)
 		{
+			/*
+			*Start a thread to finish the program openning/closing task.
+			*/
 			std::auto_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
 		}
+		/*
+		*Send feedback to the central controller.
+		*/
 		strcpy(feedback, getName());
 		strcat(feedback, "#");
 		strcat(feedback, getIP());
@@ -550,14 +561,10 @@ void HOST::run()
 }
 void HOST::addPipeServer(const char* pipename)
 {
-
 	m_mapNamedPipeServer[pipename] = std::auto_ptr<namedpipeServer>(new namedpipeServer(pipename));
-
 }
 void HOST::signalPipeClient()
 {
-
-
 
 	for (HOST_PIPE_ITER iter = m_mapNamedPipeServer.begin(); iter != m_mapNamedPipeServer.end(); iter++)
 	{

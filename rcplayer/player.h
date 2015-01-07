@@ -2,6 +2,7 @@
 #include <vlc/vlc.h>
 #include <osg/ImageStream>
 #include "rcpipe.h"
+#define RCPLAYER_MAX_ARGC 15
 class RCPLAYER_API
 {
 public:
@@ -9,7 +10,8 @@ public:
 	~RCPLAYER_API();
 
 protected:
-	virtual int initPlayer(const char* const* vlc_argv = 0) = 0;
+	virtual int initPlayer(const char* const* vlc_argv = 0,const int argc=0) = 0;
+	//virtual int initPlayer(const char* vlc_argv[]) = 0;
 	virtual int open(const char* filename) = 0;
 	virtual int rcplay() ;
 	virtual int rcpause();
@@ -37,7 +39,8 @@ protected:
 
 };
 
-class RCPLAYER :public THREAD,public RCPLAYER_API,public osg::ImageStream
+class RCPLAYER :
+	public THREAD,public RCPLAYER_API,public osg::ImageStream
 {
 public:
 	RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY): 
@@ -50,9 +53,14 @@ public:
 			m_vlcPlayer = copy.m_vlcPlayer;
 	}
 
+	static RCPLAYER* instance();
+	virtual int initPlayer(const char* const* vlc_argv = 0,const int argc=0);
+	//virtual int initPlayer(const char* vlc_argv[]);
 	META_Object(osg, RCPLAYER)
 
-	RCPLAYER(const char* const* vlc_argv = 0);
+protected:
+
+	RCPLAYER();
 
 	~RCPLAYER()
 	{
@@ -90,7 +98,6 @@ public:
 		stream->_status = INVALID;
 	}
 	virtual int open(const char* filename);
-	virtual int initPlayer(const char* const* vlc_argv = 0);
 	void open(const std::string& file, bool needPlay = true, unsigned int w = 512, unsigned int h = 512);
 	void stop()
 	{
@@ -107,7 +114,7 @@ public:
 	virtual void setVolume(float vol) ;
 	virtual float getVolume() const ;
 	virtual void run();
-
 	std::auto_ptr<namedpipeClient> client;
 };
+
 

@@ -87,16 +87,28 @@ int RCPLAYER_API::setResolution(int w, int h)
 	m_height = h;
 	return 1;
 }
-RCPLAYER::RCPLAYER(const char* const* vlc_argv ):
+
+
+
+RCPLAYER* RCPLAYER::instance()
+{
+	static RCPLAYER player;
+	return &player;
+}
+RCPLAYER::RCPLAYER():
 	osg::ImageStream(),
 	THREAD()
 {
 	m_vlcMedia = 0;
-
-	initPlayer(vlc_argv);
+	
 }
-int RCPLAYER::initPlayer(const char* const* vlc_argv)
+int RCPLAYER::initPlayer(const char* const* vlc_argv ,const int argc)
 {
+	static int isInited = false;
+	if (isInited)
+		return 1;
+	isInited = true;
+
 	if (!vlc_argv)
 	{
 		const char* vlc_args[] = {
@@ -105,13 +117,15 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv)
 			"--no-video-title-show",
 			//"--network-caching=120"
 		};
+		
 		m_vlc = libvlc_new(sizeof(vlc_args) / sizeof(vlc_args[0]), vlc_args);
-		//m_vlc = libvlc_new(0, NULL);
-
 	}
 	else
-		m_vlc = libvlc_new(sizeof(vlc_argv) / sizeof(vlc_argv[0]), vlc_argv);
-
+	{
+		m_vlc = libvlc_new(argc, vlc_argv);
+		
+	}
+	
 	m_vlcPlayer = libvlc_media_player_new(m_vlc);
 
 	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer), libvlc_MediaPlayerStopped,&RCPLAYER::videoEndFunc, this);
