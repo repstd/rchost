@@ -27,8 +27,9 @@ int rcsocket::initContext()
 		HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
-		return false;
+		return 0;
 	}
+	return 1;
 }
 int rcsocket::cleanContext()
 {

@@ -17,23 +17,6 @@ public:
 typedef std::map<std::string, std::string,StringComparerForMap> CRTLHOST_MAP;
 typedef std::map<std::string, std::string,StringComparerForMap>::iterator CRTHOST_MAP_ITER;
 
-class HOST_CONFIG_API
-{
-public:
-	virtual int loadConfig(const char* confg) = 0;
-	virtual int updateConfig()
-	{
-		return 0;
-	}
-	HOST_CONFIG_API()
-	{
-		return;
-	}
-	~HOST_CONFIG_API()
-	{
-		return;
-	}
-};
 
 
 
@@ -43,14 +26,13 @@ class CTRLHOST_OPERATOR :public HOST_CONFIG_API, public rcmutex
 public:
 	static CTRLHOST_OPERATOR* instance();
 	void addClientIP(const char* name,const char* ip);
-	virtual int loadConfig(const char* confg);
-	virtual int updateConfig(const char* confg);
+	virtual DWORD loadConfig(const char* confg);
+	virtual DWORD updateConfig(const char* confg);
 protected:
 	CTRLHOST_OPERATOR()
 		:HOST_CONFIG_API(), rcmutex()
 	{
 		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	}
-	
 	CRTLHOST_MAP m_mapNameIP;
 };

@@ -8,22 +8,13 @@
 #include <vector>
 #include "rc_common.h"
 
-#ifdef _LOG 
-#define HOST_LOG_FILENAME "./host.log"
-#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
-#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
-#else
-#define HOST_LOG_FILENAME 
-#define _LOG_INIT_HOST
-#define _LOG_FORMAT_HOST(format,data,...) 
-
-#endif
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
 }
 
-HOST_OPERATOR_API::HOST_OPERATOR_API():
+HOST_OPERATOR_API::HOST_OPERATOR_API() :
+HOST_CONFIG_API(),
 rcmutex()
 {
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
@@ -48,6 +39,7 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool
 	}
 
 }
+
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
 
 {
@@ -58,13 +50,13 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 	//Make sure no duplicated task is to be created.
 	if (iter != m_vecProgInfo.end())
 	{
-		__STD_PRINT("%s\n", "duplicated task is to pending.");
+		__STD_PRINT("%s\n", "duplicated task is pending.");
 
 		PROCESS_INFORMATION oldInfo = iter->second;
 		DWORD dwExitCode = 0;
 		GetExitCodeProcess(oldInfo.hProcess, &dwExitCode);
 
-		__STD_PRINT("status of forked process: %d\n",dwExitCode);
+		__STD_PRINT("status of forked process: %d\n", dwExitCode);
 
 		if (dwExitCode == STILL_ACTIVE)
 		{
@@ -177,11 +169,12 @@ DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 
 	PROCESS_INFORMATION pi = iter->second;
 
-	if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
-	{
-		unlock();
-		return GetLastError();
-	}
+	//if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
+	//{
+	//	unlock();
+	//	return GetLastError();
+	//}
+
 	DWORD dwExitCode = 0;
 	GetExitCodeProcess(pi.hProcess, &dwExitCode);
 	if (dwExitCode == STILL_ACTIVE)
@@ -291,6 +284,16 @@ DWORD HOST_OPERATOR::loadConfig(const char* config)
 			memset(attriStr, 0, MAX_PATH);
 		}
 	}
+
+	for (std::vector<std::string>::iterator iter = vecName.begin(); iter != vecName.end(); iter++)
+	{
+		hr = GetPrivateProfileString("Additional", iter->c_str(), "", attriStr, MAX_PATH, strINIPath);
+		if (hr)
+		{
+			m_mapNameAdditionInfo[iter->c_str()] = std::string(attriStr);
+			memset(attriStr, 0, MAX_PATH);
+		}
+	}
 	m_bIsDataLoaded = true;
 	return 0;
 }
@@ -313,7 +316,9 @@ const char* HOST_OPERATOR::getPrimaryAdapter()
 {
 	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
 	{
-		if (strncmp(iter->c_str(), "10.", 4) != -1)
+		if (strncmp(iter->c_str(), "10.", 4) != -1
+			|| strncmp(iter->c_str(), "192.", 4) != -1
+			)
 			return iter->c_str();
 	}
 	return m_vecAdapter[0].c_str();
@@ -328,7 +333,15 @@ const hostent* HOST_OPERATOR::getHostent()
 	return m_host.get();
 }
 
-HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg):THREAD(), rcmutex()
+void HOST_OPERATOR::setPort(int port)
+{
+	m_port = port;
+}
+const int HOST_OPERATOR::getPort()
+{
+	return m_port;
+}
+HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 {
 	//use a normal mutex instead of a recursive one.
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
@@ -343,7 +356,7 @@ void HOST_MSGHANDLER::syncTime() const
 	FILETIME masterFileTime = m_taskMsg->_time;
 	SYSTEMTIME curSysTime;
 	GetLocalTime(&curSysTime);
-	
+
 	__STD_PRINT("#%d: ", 1); _STD_PRINT_TIME(curSysTime);
 
 	FILETIME curFileTime;
@@ -358,22 +371,80 @@ void HOST_MSGHANDLER::syncTime() const
 
 	if (sleepTime < 0)
 		sleepTime = 0;
-	if (sleepTime>5*1000.0)
-		sleepTime = 5*1000.0;
+	if (sleepTime>5 * 1000.0)
+		sleepTime = 5 * 1000.0;
 	Sleep(sleepTime);
 
 	GetLocalTime(&curSysTime);
 	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 }
+
+DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
+{
+	HOST_MAP_ITER iter = m_mapNameAdditionInfo.find(filename);
+	bool isCurDirNeeded = false;
+	if (iter != m_mapNameAdditionInfo.end())
+	{
+
+		if (strstr(iter->second.c_str(), "-m") != NULL)
+		{
+			__STD_PRINT("%s\n", "-m");
+			if (m_vecPipebroadercaster.empty())
+				m_vecPipebroadercaster.push_back(std::auto_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
+
+			if (strstr(filename.c_str(), "rcplayer") != NULL)
+			{
+				switch (op)
+				{
+				case _OPEN:
+
+					if (!m_vecPipebroadercaster[0]->isRunning())
+					{
+
+						__STD_PRINT("Start to signal the rcplayer for %d\n", getPort());
+						//start brocaster for signalling the  vlc player to  step frame by frame
+						m_vecPipebroadercaster[0]->start();
+					}
+					break;
+				case _CLOSE:
+					__STD_PRINT("%s\n", "Finish signaling the rcplayer");
+					//close the brocaster
+
+					m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
+					m_vecPipebroadercaster[0]->cancel();
+					m_vecPipebroadercaster[0]->cancelCleanup();
+					m_vecPipebroadercaster[0].release();
+					m_vecPipebroadercaster.pop_back();
+					break;
+				}
+			}
+			//TODO:Specify operation for master prog.
+		}
+		if (strstr(iter->second.c_str(), "-s") != NULL)
+		{
+			//TODO:Specigy operatoin for slave prog.
+			__STD_PRINT("%s\n", "-s");
+		}
+		if (strstr(iter->second.c_str(), "-curDir") != NULL)
+		{
+			__STD_PRINT("%s\n", "-curDir");
+			isCurDirNeeded = true;
+		}
+		if (strstr(iter->second.c_str(), "-defaultDir") != NULL)
+		{
+			__STD_PRINT("%s\n", "-defaultDir");
+			isCurDirNeeded = false;
+		}
+	}
+	return HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
+
+}
 void HOST_MSGHANDLER::handle() const
 {
-	
+
 	syncTime();
-	
-	if (strstr(m_taskMsg->_filename, "cegui") == 0)
-		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, false);
-	else
-		HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation, true);
+
+	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
 }
 void HOST_MSGHANDLER::run()
 {
@@ -385,6 +456,9 @@ void HOST_MSGHANDLER::run()
 
 HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
 {
+
+	m_port = port;
+
 	queryHostInfo(HOST_OPERATOR::instance());
 }
 const char* HOST::getName() const
@@ -406,6 +480,7 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 	{
 		return;
 	}
+	ope->setPort(m_port);
 	char name[MAX_PATH];
 	int error = gethostname(name, MAX_PATH);
 	if (error != 0)
@@ -436,7 +511,7 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 		while (hst->h_addr_list[i] != NULL)
 		{
 			char* addr = inet_ntoa(*(in_addr*)hst->h_addr_list[i++]);
-			__STD_PRINT("Adapter: %s\n", addr);
+			__STD_PRINT("Adapter : %s\n", addr);
 			if (addr != NULL)
 				ope->saveAdapter(addr);
 		}
@@ -449,7 +524,13 @@ void HOST::run()
 	sockaddr client;
 	int sizeRcv;
 	_LOG_INIT_HOST
-	char feedback[64];
+		char feedback[64];
+
+	addPipeServer(_RC_PIPE_NAME);
+
+	std::auto_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
+	pipesignal_handler->start();
+
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
@@ -461,11 +542,33 @@ void HOST::run()
 			slave->start();
 			slave.release();
 		}
-
 		strcpy(feedback, getName());
 		strcat(feedback, "#");
 		strcat(feedback, getIP());
 		sendPacket(client, feedback, strlen(feedback), 64);
-	
 	}
+}
+void HOST::addPipeServer(const char* pipename)
+{
+
+	m_mapNamedPipeServer[pipename] = std::auto_ptr<namedpipeServer>(new namedpipeServer(pipename));
+
+}
+void HOST::signalPipeClient()
+{
+
+
+
+	for (HOST_PIPE_ITER iter = m_mapNamedPipeServer.begin(); iter != m_mapNamedPipeServer.end(); iter++)
+	{
+#ifdef _PIPE_SYNC
+		iter->second->signalClient();
+#else
+		__STD_PRINT("%s\n", "next_frame");
+#endif
+	}
+}
+HOST_PIPE HOST::getPipeServers()
+{
+	return m_mapNamedPipeServer;
 }

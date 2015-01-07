@@ -6,15 +6,16 @@ CTRLHOST_OPERATOR* CTRLHOST_OPERATOR::instance()
 	static CTRLHOST_OPERATOR host;
 	return &host;
 }
-int CTRLHOST_OPERATOR::loadConfig(const char* confg)
+DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
 {
+	lock();
 	char strINIPATH[MAX_PATH];
 	_fullpath(strINIPATH, confg, MAX_PATH);
 	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
 	{
 		FILE* fp=fopen(confg, "w");
 		fclose(fp);
-
+		unlock();
 		return ERROR_NOT_FOUND;
 	}
 	CHAR attrStr[MAX_PATH];
@@ -33,14 +34,17 @@ int CTRLHOST_OPERATOR::loadConfig(const char* confg)
 		m_mapNameIP[app.c_str()] = attrStr;
 		memset(attrStr, 0, MAX_PATH);
 	}
+	unlock();
 	return ERROR_SUCCESS;
 }
-int CTRLHOST_OPERATOR::updateConfig(const char* confg)
+DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
 {
+	lock();
 	char strINIPATH[MAX_PATH];
 	_fullpath(strINIPATH, confg, MAX_PATH);
 	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
 	{
+		unlock();
 		return ERROR_NOT_FOUND;
 	}
 	CHAR attrStr[MAX_PATH];
@@ -54,10 +58,20 @@ int CTRLHOST_OPERATOR::updateConfig(const char* confg)
 			continue;
 		__DEBUG_PRINT("trying adding section: %s\n", iter->first.c_str());
 		hr = WritePrivateProfileString(iter->first.c_str(), "ip", iter->second.c_str(),strINIPATH);
+		char timestamp[MAX_PATH];
+		SYSTEMTIME systime;
+		GetLocalTime(&systime);
+		_STD_ENCODE_TIMESTAMP(timestamp, systime);
+		hr = WritePrivateProfileString(iter->first.c_str(), "connecting_time",timestamp,strINIPATH);
 		if (!hr)
+		{
+			unlock();
 			return GetLastError();
+		}
+		
 		__DEBUG_PRINT("added section: %s\n", iter->first.c_str());
 	}
+	unlock();
 	return ERROR_SUCCESS;
 }
 void CTRLHOST_OPERATOR::addClientIP(const char* name,const char* ip)

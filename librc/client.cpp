@@ -64,6 +64,7 @@ int client::initForPort(int port, const char* serverAddr)
 {
 
 	if (serverAddr == NULL)
+		//return initSocket(port, inet_addr("225.225.225.225"));
 		return initSocket(port, htonl(INADDR_BROADCAST));
 	else
 		return initSocket(port, inet_addr(serverAddr));

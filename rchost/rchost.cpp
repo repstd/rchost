@@ -31,6 +31,7 @@ int main(int argc, char* argv[])
 
 	//host2->join();
 	host->join();
+	host.release();
 	return 0;
 }
 
