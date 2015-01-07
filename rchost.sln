@@ -4,8 +4,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 12.0.21005.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "host", "rchost\rchost.vcxproj", "{9F176896-6959-4601-A2BF-A742DFE803F6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5} = {AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "control", "control\control.vcxproj", "{F6EE6BF8-B3EB-420C-AE58-20CF465FEED8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5} = {AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "librc", "librc\librc.vcxproj", "{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +29,10 @@ Global
 		{F6EE6BF8-B3EB-420C-AE58-20CF465FEED8}.Debug|Win32.Build.0 = Debug|Win32
 		{F6EE6BF8-B3EB-420C-AE58-20CF465FEED8}.Release|Win32.ActiveCfg = Release|Win32
 		{F6EE6BF8-B3EB-420C-AE58-20CF465FEED8}.Release|Win32.Build.0 = Release|Win32
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}.Debug|Win32.Build.0 = Debug|Win32
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}.Release|Win32.ActiveCfg = Release|Win32
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
