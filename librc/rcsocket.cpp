@@ -65,6 +65,7 @@ int rcsocket::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 
 		size = recvfrom(m_socket, (char*)data, maxSize, 0, (sockaddr*)&from, &len);
 
+#ifndef _MULTI_THREAD_SAME_PORT_LISTEN
 		fd_set fdset;
 		FD_ZERO(&fdset);
 		FD_SET(m_socket, &fdset);
@@ -72,7 +73,6 @@ int rcsocket::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 0;
-
 		while (select(static_cast<int>(m_socket)+1, &fdset, 0L, 0L, &tv))
 		{
 			if (FD_ISSET(m_socket, &fdset))
@@ -85,6 +85,7 @@ int rcsocket::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 			__STD_PRINT("Error in receiving data:%d", WSAGetLastError());
 			return false;
 		}
+#endif
 #endif
 	}
 	else

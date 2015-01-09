@@ -17,7 +17,23 @@ client::~client()
 {
 
 }
-
+client::client(SOCKET socket)
+{
+	m_socket = socket;
+}
+int client::setSocketNonBlock(int flag)
+{
+	/*
+	*flag=0: nblock
+	*/
+	u_long mode = 0;
+	if (flag == 1)
+	{
+		mode = 1;
+	}
+	ioctlsocket(m_socket, FIONBIO, &mode);
+	return 1;
+}
 int client::initSocket(int port, ULONG S_addr)
 {
 	
