@@ -66,14 +66,11 @@ int main(int argc, char** argv)
 		p = strstr(argv[i], "--width");
 		if (p != NULL)
 		{
-
 			p = strstr(argv[i] + 2, "-");
-
 			if (p != NULL)
 			{
 				width = atoi(p + 1);
 			}
-
 			flag = 1;
 		}
 
@@ -95,6 +92,7 @@ int main(int argc, char** argv)
 	}
 	__STD_PRINT("width: %d ", width);
 	__STD_PRINT("height: %d\n", height);
+
 	RCPLAYER::instance()->initPlayer(vlc_args,realArgc);
 
 	if (RCPLAYER::instance()!=NULL)
@@ -102,7 +100,7 @@ int main(int argc, char** argv)
 		RCPLAYER::instance()->open(file, false,width, height);
 		RCPLAYER::instance()->start();
 #else
-		RCPLAYER::instance->open(file, true,width, height);
+		RCPLAYER::instance()->open(file, true,width, height);
 #endif
 
 	osg::ref_ptr<osg::Node> video = createVideoQuad(osg::Vec3(),width,height);

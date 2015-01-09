@@ -75,7 +75,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
-
+	si.dwFlags = STARTF_RUNFULLSCREEN;
 	ZeroMemory(&pi, sizeof(pi));
 
 	//Add process access attributes.
@@ -371,8 +371,8 @@ void HOST_MSGHANDLER::syncTime() const
 
 	if (sleepTime < 0)
 		sleepTime = 0;
-	if (sleepTime>5 * 1000.0)
-		sleepTime = 5 * 1000.0;
+	if (sleepTime>30 * 1000.0)
+		sleepTime = 30 * 1000.0;
 	Sleep(sleepTime);
 
 	GetLocalTime(&curSysTime);
@@ -443,15 +443,17 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 }
 void HOST_MSGHANDLER::handle() const
 {
-
+#ifdef _TIME_SYNC
 	syncTime();
-
+#endif
 	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
 }
 void HOST_MSGHANDLER::run()
 {
 	lock();
+
 	handle();
+
 	unlock();
 }
 
@@ -571,7 +573,7 @@ void HOST::signalPipeClient()
 #ifdef _PIPE_SYNC
 		iter->second->signalClient();
 #else
-		__STD_PRINT("%s\n", "next_frame");
+		//__STD_PRINT("%s\n", "next_frame");
 #endif
 	}
 }
