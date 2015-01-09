@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 	texture->setImage(RCPLAYER::instance());
 
 	osg::ref_ptr<osg::Drawable> quad = osg::createTexturedQuadGeometry(
-		osg::Vec3(), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f));
+		osg::Vec3(), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f), 0, 1, 1, 0);
 	quad->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture.get());
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
