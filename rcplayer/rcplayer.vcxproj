@@ -44,8 +44,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)vlc/include;$(SolutionDir)librc;$(OSG_ROOT)\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)vlc/lib;$(SolutionDir)$(Configuration);$(OSG_ROOT)\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)vlc/include;$(SolutionDir)librc;$(OSG_ROOT_32)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)vlc/lib;$(SolutionDir)$(Configuration);$(OSG_ROOT_32)\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -67,7 +67,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;_PIPE_SYNC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BrowseInformation>true</BrowseInformation>

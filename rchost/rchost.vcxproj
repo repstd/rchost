@@ -45,8 +45,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(OSG_ROOT)\include;$(SolutionDir)\librc;$(IncludePath)</IncludePath>
-    <LibraryPath>$(OSG_ROOT)\lib;$(SolutionDir)$(Configuration);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(OSG_ROOT_32)\include;$(SolutionDir)\librc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(OSG_ROOT_32)\lib;$(SolutionDir)$(Configuration);$(LibraryPath)</LibraryPath>
     <IntDir>$(Configuration)\intermediate\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>

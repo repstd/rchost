@@ -198,7 +198,6 @@ int main(int argc, char *argv[])
 			iter->get()->start();
 		}
 #else
-
 		static std::auto_ptr<HOST_LISTENER> listener(new HOST_LISTENER(rc.get()));
 		listener->Init();
 		listener->start();
