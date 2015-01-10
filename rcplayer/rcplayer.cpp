@@ -71,22 +71,22 @@ int main(int argc, char** argv)
 	if (RCPLAYER::instance() != NULL)
 #ifdef _PIPE_SYNC
 		RCPLAYER::instance()->open(file, false, width, height);
-	RCPLAYER::instance()->start();
+		RCPLAYER::instance()->start();
 #else
 		RCPLAYER::instance()->open(file, true, width, height);
 #endif
 
 	osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-
+	texture->setTextureSize(width, height);
 	texture->setImage(RCPLAYER::instance());
-
+	texture->setResizeNonPowerOfTwoHint(false);
 	osg::ref_ptr<osg::Drawable> quad = osg::createTexturedQuadGeometry(
 		osg::Vec3(), osg::Vec3(1.0f, 0.0f, 0.0f), osg::Vec3(0.0f, 1.0f, 0.0f), 0, 1, 1, 0);
-	quad->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture.get());
 
+	quad->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture.get());
+	
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	geode->addDrawable(quad.get());
-
 	osg::ref_ptr<osg::Camera> camera = new osg::Camera;
 	camera->setClearMask(0);
 	camera->setCullingActive(false);
@@ -102,8 +102,8 @@ int main(int argc, char** argv)
 
 	osg::ref_ptr<osg::Group> root = new osg::Group;
 	root->addChild(camera.get());
-
 	osgViewer::Viewer viewer;
+	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
 	viewer.setSceneData(root.get());
 	return viewer.run();
 }
