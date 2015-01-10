@@ -136,7 +136,11 @@ public:
 	{
 		return m_isLocked == true;
 	}
-	
+	void setTargetTime(ULONGLONG targetTime)
+	{
+
+		m_targetTime = targetTime;
+	}
 	virtual void play();
 	virtual void pause();
 	virtual void rewind();
@@ -152,6 +156,7 @@ public:
 	{
 		return m_filename.c_str();
 	}
+	ULONGLONG m_targetTime;
 	std::auto_ptr<namedpipeClient> client;
 	std::string m_filename;
 	static int m_isLocked;

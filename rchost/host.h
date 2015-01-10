@@ -67,15 +67,19 @@ public:
 	}
 	virtual DWORD handleProgram(std::string filename, const char op, bool isCurDirNeeded);
 protected:
+	const char* getPath(std::string filename);
+	const char* getArg(std::string filename);
+	const char* getArg(std::string filename, std::string additional);
+
 	DWORD createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
 	DWORD createProgram(std::string filename, bool isCurDirNeeded);
 	DWORD closeProgram(std::string filename);
+
 	std::map<std::string, std::string> m_mapNamePath;
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, std::string> m_mapNameAdditionInfo;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
-	FILE* m_fConfig;
 
 };
 
@@ -84,12 +88,15 @@ class HOST_OPERATOR
 	:public HOST_OPERATOR_API
 {
 public:
-	static HOST_OPERATOR* instance();
 	virtual DWORD loadConfig(const char* filename);
-
 	virtual DWORD handleProgram(std::string filename, const char op);
-	const char* getPath(std::string filename);
-	const char* getArg(std::string filename);
+	//We can use this to add timestamp and something else to the child process.
+
+	void updateArg(std::string filename, std::string additional);
+	
+	static HOST_OPERATOR* instance();
+
+
 	void saveHostName(const char* hostname);
 	const char* getHostName();
 	void saveAdapter(const char* addr);
@@ -98,6 +105,7 @@ public:
 	const hostent* getHostent();
 	void setPort(int port);
 	const int getPort();
+				
 protected:
 	HOST_OPERATOR()
 		:HOST_OPERATOR_API()
@@ -114,6 +122,7 @@ private:
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
 	std::vector < std::auto_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
+
 };
 
 //For each host thread,we need a handler to finish message handling routines.
@@ -124,9 +133,13 @@ public:
 	HOST_MSGHANDLER(const HOST_MSG* msg);
 	virtual void handle() const;
 	virtual void run();
+	const HOST_MSG* getMSG();
+
 protected:
+
 	void syncTime() const;
 	std::auto_ptr<HOST_MSG> m_taskMsg;
+
 };
 
 //For each host thread,we need a listener to listen the specified port and recive the feedback from clients.

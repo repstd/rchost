@@ -7,7 +7,7 @@
 #include <iterator>
 #include <vector>
 #include "rc_common.h"
-
+#include <string>
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
@@ -40,6 +40,43 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool
 
 }
 
+const char* HOST_OPERATOR_API::getPath(std::string filename)
+{
+	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
+	if (iter == m_mapNamePath.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+}
+const char* HOST_OPERATOR_API::getArg(std::string filename)
+{
+	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
+	if (iter == m_mapNameArgs.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+
+}
+const char* HOST_OPERATOR_API::getArg(std::string filename, std::string additional)
+{
+
+	const char* originalArg = getArg(filename);
+	if (originalArg == NULL)
+		return NULL;
+	char buf[MAX_PATH];
+	sprintf(buf, "%s", originalArg);
+	char* p = strstr(buf, "--SettledTime");
+	if (p==NULL)
+	{
+		strcat(buf, additional.c_str());
+	}
+	else
+	{
+		*p = '\0';
+		strcat(buf, additional.c_str());
+	}
+	return buf;
+}
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
 
 {
@@ -139,21 +176,34 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
 {
 
-	std::string path;
-	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
-	if (iter == m_mapNamePath.end())
+	const char* path = getPath(filename);
+	if (path == NULL)
 		return ERROR_NOT_FOUND;
-	else
-		path = iter->second;
-	iter = m_mapNameArgs.find(filename);
+
 	char* curDir = NULL;
 	if (isCurDirNeeded)
-		curDir = parsePath(path.c_str());
+		curDir = parsePath(path);
+	const char* argv = getArg(filename);
 
-	if (iter != m_mapNameArgs.end())
-		return createProgram(filename, path, curDir, iter->second, 1);
+	char args[MAX_PATH];
+	if (argv != NULL)
+	{
+		strcpy(args, argv);
+
+	}
 	else
-		return createProgram(filename, path, curDir, "", 0);
+		strcpy(args, "");
+
+	////Add timestamp to the argv
+	//if (strstr(filename.c_str(), "rcplayer")!= NULL)
+	//{
+	//	char timeStampBuf[40];
+
+	//	//sprintf(timeStampBuf, " --StartTime %ld",)
+
+	//}
+
+	return createProgram(filename, path, curDir, args, 1);
 
 }
 DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
@@ -221,25 +271,8 @@ HOST_OPERATOR* HOST_OPERATOR::instance()
 	static HOST_OPERATOR inst;
 	return &inst;
 }
-const char* HOST_OPERATOR::getPath(std::string filename)
-{
-	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
-	if (iter == m_mapNamePath.end())
-		return NULL;
-	else
-		return iter->second.c_str();
-}
-const char* HOST_OPERATOR::getArg(std::string filename)
-{
-	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
-	if (iter == m_mapNameArgs.end())
-		return NULL;
-	else
-		return iter->second.c_str();
-}
 DWORD HOST_OPERATOR::loadConfig(const char* config)
 {
-	m_fConfig = fopen(config, "r");
 	if (m_bIsDataLoaded)
 		return 0;
 	char strINIPath[MAX_PATH];
@@ -349,36 +382,21 @@ HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 	//Assign the server a msg to handle
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-void HOST_MSGHANDLER::syncTime() const
+
+void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 {
-	if (m_taskMsg->_elapseTime < 0.001)
+
+	const char* composite = getArg(filename, additional);
+	if (composite == NULL)
 		return;
-	FILETIME masterFileTime = m_taskMsg->_time;
-	SYSTEMTIME curSysTime;
-	GetLocalTime(&curSysTime);
+	
+	//Now Update
+	char temp[MAX_PATH];
+	sprintf(temp, "%s", composite);
+	m_mapNameArgs.erase(filename);
+	m_mapNameArgs[filename.c_str()] = std::string(temp);
 
-	__STD_PRINT("#%d: ", 1); _STD_PRINT_TIME(curSysTime);
-
-	FILETIME curFileTime;
-	SystemTimeToFileTime(&curSysTime, &curFileTime);
-	ULARGE_INTEGER master;
-	ULARGE_INTEGER slave;
-	master.HighPart = masterFileTime.dwHighDateTime;
-	master.LowPart = masterFileTime.dwLowDateTime;
-	slave.HighPart = curFileTime.dwHighDateTime;
-	slave.LowPart = curFileTime.dwLowDateTime;
-	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
-
-	if (sleepTime < 0)
-		sleepTime = 0;
-	if (sleepTime>30 * 1000.0)
-		sleepTime = 30 * 1000.0;
-	Sleep(sleepTime);
-
-	GetLocalTime(&curSysTime);
-	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 }
-
 DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 {
 	/*
@@ -441,12 +459,63 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 	return HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
 
 }
+
+void HOST_MSGHANDLER::syncTime() const
+{
+
+	FILETIME masterFileTime = m_taskMsg->_time;
+	SYSTEMTIME curSysTime;
+	GetLocalTime(&curSysTime);
+
+	__STD_PRINT("#%d: ", 1); _STD_PRINT_TIME(curSysTime);
+
+	FILETIME curFileTime;
+	SystemTimeToFileTime(&curSysTime, &curFileTime);
+	ULARGE_INTEGER master;
+	ULARGE_INTEGER slave;
+	master.HighPart = masterFileTime.dwHighDateTime;
+	master.LowPart = masterFileTime.dwLowDateTime;
+	slave.HighPart = curFileTime.dwHighDateTime;
+	slave.LowPart = curFileTime.dwLowDateTime;
+
+	/*
+	*
+	*Here we add the timestamp to the arguments list instead of call Sleep.@150110
+	*/
+	if (m_taskMsg->_operation == _OPEN)
+	{
+
+		char timestamp[MAX_PATH];
+		sprintf(timestamp, " --SettledTime-%llu", master.QuadPart);
+
+		_LOG_FORMAT_HOST("%s\n", timestamp);
+
+		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename,timestamp);
+	}
+
+#if 0
+	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
+
+	if (sleepTime < 0)
+		sleepTime = 0;
+	if (sleepTime > 30 * 1000.0)
+		sleepTime = 30 * 1000.0;
+	Sleep(sleepTime);
+	GetLocalTime(&curSysTime);
+	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
+#endif
+}
+const HOST_MSG* HOST_MSGHANDLER::getMSG()
+{
+	return m_taskMsg.get();
+}
 void HOST_MSGHANDLER::handle() const
 {
 #ifdef _TIME_SYNC
 	syncTime();
 #endif
 	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
+
 }
 void HOST_MSGHANDLER::run()
 {

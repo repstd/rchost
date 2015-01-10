@@ -156,6 +156,8 @@ int main(int argc, char *argv[])
 			std::cout << "Error:  The elapse time in which the slave programs are to be invoked should be no less than 0." << std::endl;
 			continue;
 		}
+		if (et == 0)
+			et+=1;
 		msg->_elapseTime = et;
 		SYSTEMTIME systime;
 		FILETIME  filetime;
