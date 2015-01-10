@@ -128,7 +128,7 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 
 	m_vlcPlayer = libvlc_media_player_new(m_vlc);
 
-	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer),libvlc_MediaPlayerEndReached , &RCPLAYER::videoEndFunc, this);
+	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer), libvlc_MediaPlayerEndReached, &RCPLAYER::videoEndFunc, this);
 	_status = INVALID;
 	return 1;
 }
@@ -154,6 +154,28 @@ void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsi
 
 	setResolution(w, h);
 	open(file.c_str());
+	if (m_targetTime)
+	{
+
+		SYSTEMTIME curSysTime;
+		GetLocalTime(&curSysTime);
+
+		FILETIME curFileTime;
+		SystemTimeToFileTime(&curSysTime, &curFileTime);
+
+		ULARGE_INTEGER slave;
+		slave.HighPart = curFileTime.dwHighDateTime;
+		slave.LowPart = curFileTime.dwLowDateTime;
+
+		ULONGLONG sleepTime = (m_targetTime - slave.QuadPart) / 10000.0;
+		__STD_PRINT("Now sleep for %I64u ms\n", sleepTime);
+		if (sleepTime < 0)
+			sleepTime = 0;
+		if (sleepTime > 30 * 1000.0)
+			sleepTime = 30 * 1000.0;
+		Sleep(sleepTime);
+	}
+
 	if (needPlay)
 		play();
 }
@@ -239,16 +261,15 @@ void RCPLAYER::run()
 	client = std::auto_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
 	//play();
 	int cnt = 0;
+
 	while (getState() != libvlc_Ended)
 	{
 
-		if (client->receive()&& isLocked()==false)
+		if (client->receive() && isLocked() == false)
 		{
 			//nextFrame();
 			play();
-
 			play();
-
 
 		}
 
