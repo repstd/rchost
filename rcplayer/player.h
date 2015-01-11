@@ -40,19 +40,10 @@ protected:
 };
 
 class RCPLAYER :
-	public THREAD, public RCPLAYER_API, public osg::ImageStream
+	public THREAD, public RCPLAYER_API, public osg::ImageStream, public rcmutex
 {
 public:
-	RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY) :
-		RCPLAYER_API(),
-		osg::ImageStream(copy, op),
-		THREAD()
-	{
-			m_vlc = copy.m_vlc;
-			m_vlcMedia = copy.m_vlcMedia;
-			m_vlcPlayer = copy.m_vlcPlayer;
-		}
-
+	RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
 	static RCPLAYER* instance();
 	virtual int initPlayer(const char* const* vlc_argv = 0, const int argc = 0);
 	//virtual int initPlayer(const char* vlc_argv[]);
@@ -75,72 +66,22 @@ protected:
 
 	}
 public:
-	static void* lockFunc(void* data, void** p_pixels)
-	{
+	static void* lockFunc(void* data, void** p_pixels);
 
-		m_isLocked = true;
-		RCPLAYER* stream = (RCPLAYER*)data;
-		*p_pixels = (void*)stream->data();
-		if (1)
-		{
-#ifdef _FPS_STAT
-			static DWORD frameCnt = 0;
-			static float fps = 0.0;
-			static DWORD last = GetTickCount();
-			static DWORD elapse_time = 0;
-			++frameCnt;
-			DWORD now = GetTickCount();
-			elapse_time = now - last;
-			if (now - last >= 1000)
-			{
-				fps = frameCnt;
 
-				__STD_PRINT("FPS: %.0f\n", fps);
+	static void unlockFunc(void* data, void* id, void* const* p_pixels);
 
-				frameCnt = 0;
-				last = now;
-			}
-#endif
-		}
-		
-		return NULL;
-	}
 
-	static void unlockFunc(void* data, void* id, void* const* p_pixels)
-	{
-		RCPLAYER* stream = (RCPLAYER*)data;
-		stream->dirty();
-		m_isLocked = false;
-	}
+	static void displayFunc(void* data, void* id);
 
-	static void displayFunc(void* data, void* id)
-	{
-	}
-
-	static void videoEndFunc(const libvlc_event_t*, void* data)
-	{
-
-		RCPLAYER* stream = (RCPLAYER*)data;
-		stream->setPosition(0.1);
-		stream->play();
-		stream->play();
-	}
-
+	static void videoEndFunc(const libvlc_event_t*, void* data);
+	void init();
 	virtual int open(const char* filename);
 	void open(const std::string& file, bool needPlay = true, unsigned int w = 512, unsigned int h = 512);
-	void stop()
-	{
-		rcstop();
-	}
-	int isLocked()
-	{
-		return m_isLocked == true;
-	}
-	void setTargetTime(ULONGLONG targetTime)
-	{
-
-		m_targetTime = targetTime;
-	}
+	void stop();
+	int isLocked();
+	void setTargetTime(ULONGLONG targetTime);
+	void updateTexture();
 	virtual void play();
 	virtual void pause();
 	virtual void rewind();
@@ -152,14 +93,13 @@ public:
 	virtual void setVolume(float vol);
 	virtual float getVolume() const;
 	virtual void run();
-	const char* getFilename()
-	{
-		return m_filename.c_str();
-	}
+	const char* getFilename();
 	ULONGLONG m_targetTime;
 	std::auto_ptr<namedpipeClient> client;
 	std::string m_filename;
 	static int m_isLocked;
+	static int m_isFliped;
+	BYTE* m_frameBuf;
 };
 
 

@@ -2,6 +2,7 @@
 #include "player.h"
 
 int RCPLAYER::m_isLocked = -1;
+int RCPLAYER::m_isFliped = 0;
 RCPLAYER_API::RCPLAYER_API()
 {
 
@@ -97,10 +98,31 @@ RCPLAYER* RCPLAYER::instance()
 }
 RCPLAYER::RCPLAYER() :
 osg::ImageStream(),
-THREAD()
+THREAD(),
+rcmutex()
 {
-	m_vlcMedia = 0;
+	init();
+}
 
+RCPLAYER::RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op) :
+RCPLAYER_API(),
+osg::ImageStream(copy, op),
+THREAD(),
+rcmutex()
+{
+	init();
+	m_vlc = copy.m_vlc;
+	m_vlcMedia = copy.m_vlcMedia;
+	m_vlcPlayer = copy.m_vlcPlayer;
+
+}
+void RCPLAYER::init()
+{
+	m_vlcMedia = NULL;
+	m_vlc = NULL;
+	m_vlcMedia = NULL;
+	m_vlcPlayer = NULL;
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 }
 int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 {
@@ -127,9 +149,11 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 	}
 
 	m_vlcPlayer = libvlc_media_player_new(m_vlc);
-
 	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer), libvlc_MediaPlayerEndReached, &RCPLAYER::videoEndFunc, this);
 	_status = INVALID;
+
+	setOrigin(osg::Image::TOP_LEFT);
+
 	return 1;
 }
 
@@ -138,17 +162,18 @@ int RCPLAYER::open(const char* filename)
 
 	m_vlcMedia = libvlc_media_new_path(m_vlc, filename);
 	libvlc_media_player_set_media(m_vlcPlayer, m_vlcMedia);
-	libvlc_video_set_callbacks(m_vlcPlayer, &RCPLAYER::lockFunc, &RCPLAYER::unlockFunc, &RCPLAYER::displayFunc, this);
 	libvlc_video_set_format(m_vlcPlayer, "RGBA", m_width, m_height, m_width * 4);
 	allocateImage(m_width, m_height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
+	m_frameBuf = (BYTE*)calloc(1, getImageSizeInBytes());
+
+	libvlc_video_set_callbacks(m_vlcPlayer, &RCPLAYER::lockFunc, &RCPLAYER::unlockFunc, &RCPLAYER::displayFunc, m_frameBuf);
 	m_filename = filename;
 
 	__STD_PRINT("Opened %s Successfully.\n", filename);
 
 	return 1;
 }
-
 void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsigned int h)
 {
 
@@ -175,7 +200,6 @@ void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsi
 			sleepTime = 30 * 1000.0;
 		Sleep(sleepTime);
 	}
-
 	if (needPlay)
 		play();
 }
@@ -276,15 +300,98 @@ void RCPLAYER::run()
 	}
 }
 
+const char* RCPLAYER::getFilename()
+{
+	return m_filename.c_str();
+}
+void RCPLAYER::updateTexture()
+{
+	//Here we need to flip the frame vertically.
+	lock();
+	BYTE* p = data();
+	unsigned int rowStepInBytes = getRowStepInBytes();
+	unsigned int imageStepInBytes = getImageStepInBytes();
+
+	for (int j = 0; j < m_height; j++)
+	{
+		memcpy(p + (m_height - 1 - j)*rowStepInBytes, m_frameBuf + j*rowStepInBytes, rowStepInBytes);
+	}
+	unlock();
+
+}
+
+void RCPLAYER::stop()
+{
+	rcstop();
+}
+
+int RCPLAYER::isLocked()
+{
+	return m_isLocked == true;
+}
+
+void RCPLAYER::setTargetTime(ULONGLONG targetTime)
+{
+	m_targetTime = targetTime;
+}
 
 
 
 
 
+void* RCPLAYER::lockFunc(void* data, void** p_pixels)
+{
+
+	m_isLocked = true;
+	BYTE* buf = (BYTE*)data;
+	*p_pixels = buf;
+	if (1)
+	{
+#ifdef _FPS_STAT
+		static DWORD frameCnt = 0;
+		static float fps = 0.0;
+		static DWORD last = GetTickCount();
+		static DWORD elapse_time = 0;
+		++frameCnt;
+		DWORD now = GetTickCount();
+		elapse_time = now - last;
+		if (now - last >= 1000)
+		{
+			fps = frameCnt;
+
+			__STD_PRINT("FPS: %.0f\n", fps);
+			frameCnt = 0;
+			last = now;
+		}
+#endif
+	}
+
+	return NULL;
+}
+
+void RCPLAYER::unlockFunc(void* data, void* id, void* const* p_pixels)
+{
+	BYTE* buf = (BYTE*)data;
+	//RCPLAYER* stream = (RCPLAYER*)data;
+	m_isLocked = false;
 
 
+}
 
+void RCPLAYER::displayFunc(void* data, void* id)
+{
 
+	RCPLAYER* stream = (RCPLAYER*)data;
+}
+
+void RCPLAYER::videoEndFunc(const libvlc_event_t*, void* data)
+{
+
+	RCPLAYER* stream = (RCPLAYER*)data;
+	stream->setPosition(0.1);
+	stream->play();
+	stream->play();
+}
 
 
 
