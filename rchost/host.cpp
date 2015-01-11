@@ -413,7 +413,7 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 			if (m_vecPipebroadercaster.empty())
 				m_vecPipebroadercaster.push_back(std::auto_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
 
-			if (strstr(filename.c_str(), "rcplayer") != NULL)
+			if (strstr(filename.c_str(), "video") != NULL)
 			{
 				switch (op)
 				{
@@ -512,7 +512,10 @@ const HOST_MSG* HOST_MSGHANDLER::getMSG()
 void HOST_MSGHANDLER::handle() const
 {
 #ifdef _TIME_SYNC
-	syncTime();
+	if (strstr(m_taskMsg->_filename, "video"))
+	{
+		syncTime();
+	}
 #endif
 	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
 

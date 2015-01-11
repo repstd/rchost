@@ -16,6 +16,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "librc", "librc\librc.vcxproj", "{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rcplayer", "rcplayer\rcplayer.vcxproj", "{9F7948C9-0B7F-4C5C-A5EC-8D4757C49237}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5} = {AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{6EB6BB82-EBCE-418D-884E-B0BF5BC04B3A}"
 EndProject

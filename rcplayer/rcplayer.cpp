@@ -28,18 +28,12 @@ osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer,osg::Displ
 
 	//// new we need to add the texture to the mesh, we do so by creating a
 	//// StateSet to contain the Texture StateAttribute.
-
 	osg::StateSet* stateset = geode->getOrCreateStateSet();
 	stateset->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
-	
 	stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-
 	osg::TexMat* texmat = new osg::TexMat;
 	texmat->setScaleByTextureRectangleSize(true);
-
 	stateset->setTextureAttributeAndModes(0, texmat, osg::StateAttribute::ON);
-
-
 	osg::ref_ptr<osg::Camera> camera = new osg::Camera;
 	camera->setGraphicsContext(gc);
 	camera->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -64,7 +58,6 @@ osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer,osg::Displ
 	// camera->addEventCallback(new KeystoneHandler(keystone));
 
 	viewer.addSlave(camera.get(), osg::Matrixd(), osg::Matrixd(), false);
-
 	return camera.release();
 }
 
@@ -76,10 +69,10 @@ int main(int argc, char** argv)
 	char **vlc_args = (char **)malloc((argc)* sizeof(char *));
 	int realArgc = 0;
 	ULONGLONG targetStartTime = 0;
-	std::string keyStoneCorrFile("D:\cow.osgt");
+	std::string keyStoneCorrFile("D:\\cow.osgt");
 	if (argc < 1)
 	{
-		file = std::string("Data\1.avi");
+		file = std::string("Data\\1.avi");
 		//return 0;
 	}
 	else
@@ -150,7 +143,7 @@ int main(int argc, char** argv)
 	if (RCPLAYER::instance() != NULL)
 #ifdef _PIPE_SYNC
 		RCPLAYER::instance()->open(file, false, width, height);
-	RCPLAYER::instance()->start();
+		RCPLAYER::instance()->start();
 #else
 		RCPLAYER::instance()->open(file, true, width, height);
 #endif
@@ -166,15 +159,14 @@ int main(int argc, char** argv)
 	traits->sharedContext = 0;
 
 	osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
-	if (gc.valid())
-	{
-		gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
-		gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	}
+	//if (gc.valid())
+	//{
+	//	gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
+	//	gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//}
 
 	osg::DisplaySettings* ds = osg::DisplaySettings::instance();
 	osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keyStoneCorrFile);
-
 
 	osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
 	texture->setTextureSize(width, height);
@@ -182,10 +174,9 @@ int main(int argc, char** argv)
 	texture->setResizeNonPowerOfTwoHint(false);
 	osg::Camera* camera = assignKeystoneDistortionCamera(viewer,ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
 	//camera->getDisplaySettings()->setCompileContextsHint(false);
-
+	
 	viewer.setSceneData(camera);
 	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
-
 	while (!viewer.done())
 	{
 		RCPLAYER::instance()->updateTexture();

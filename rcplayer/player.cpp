@@ -283,7 +283,7 @@ float RCPLAYER::getVolume() const
 void RCPLAYER::run()
 {
 	client = std::auto_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
-	//play();
+	play();
 	int cnt = 0;
 
 	while (getState() != libvlc_Ended)
@@ -291,10 +291,9 @@ void RCPLAYER::run()
 
 		if (client->receive() && isLocked() == false)
 		{
-			//nextFrame();
-			play();
-			play();
-
+			nextFrame();
+			//play();
+			//play();
 		}
 
 	}
@@ -334,8 +333,6 @@ void RCPLAYER::setTargetTime(ULONGLONG targetTime)
 {
 	m_targetTime = targetTime;
 }
-
-
 
 
 
