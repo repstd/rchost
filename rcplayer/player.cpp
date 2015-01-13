@@ -292,7 +292,7 @@ float RCPLAYER::getVolume() const
 }
 void RCPLAYER::run()
 {
-	client = std::auto_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
+	client = std::shared_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
 	int cnt = 0;
 
 	while (getState() != libvlc_Ended)

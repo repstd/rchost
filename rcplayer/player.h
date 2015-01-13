@@ -104,7 +104,7 @@ public:
 
 	const char* getFilename();
 	ULONGLONG m_targetTime;
-	std::unique_ptr<namedpipeClient> client;
+	std::shared_ptr<namedpipeClient> client;
 	std::string m_filename;
 	static int m_isLocked;
 	static int m_isFliped;

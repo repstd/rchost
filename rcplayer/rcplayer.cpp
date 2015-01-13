@@ -197,13 +197,15 @@ int main(int argc, char** argv)
 	texture->setTextureSize(width, height);
 	texture->setImage(RCPLAYER::instance());
 	texture->setResizeNonPowerOfTwoHint(false);
+
 	osg::Camera* camera = assignKeystoneDistortionCamera(viewer, ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
-	//camera->getDisplaySettings()->setCompileContextsHint(false);
 
 	viewer.setSceneData(camera);
 	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
 	osg::setNotifyHandler(new LogFileHandler("warn.txt"));
+
 	int flag=1;
+
 	while (!viewer.done())
 	{
 
@@ -213,11 +215,11 @@ int main(int argc, char** argv)
 
 		RCPLAYER::instance()->dirty();
 
-		if (flag)
-		{
-			flag = 0;
-			RCPLAYER::instance()->syncStart();
-		}
+		//if (flag)
+		//{
+		//	flag = 0;
+		//	RCPLAYER::instance()->syncStart();
+		//}
 	}
 
 	return 1;
