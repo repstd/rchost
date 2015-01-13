@@ -12,6 +12,8 @@ def getLines(path):
 	# print path
 	sum=0
 	for root,dirs,fns in os.walk(path):
+		if root.find('vlc')!=-1:
+			continue
 		absolutePath=root+"\\"
 		for f in fns:
 			if cpp.search(f) or py.search(f) or h.search(f):

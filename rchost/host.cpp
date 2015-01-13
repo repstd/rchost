@@ -6,68 +6,32 @@
 #include <sstream>
 #include <iterator>
 #include <vector>
-
+#include "rc_common.h"
+#include <string>
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
 }
 
-HOST_API::HOST_API(int port) :
-OpenThreads::Thread()
+HOST_OPERATOR_API::HOST_OPERATOR_API() :
+HOST_CONFIG_API(),
+rcmutex()
 {
-	//Init the mutex with specified mutex type.
-	initMutex(new OpenThreads::Mutex());
-	//initMutex(new OpenThreads::Mutex(OpenThreads::Mutex::MUTEX_RECURSIVE));
-	m_pServer = std::auto_ptr<server>(new server(port));
-	loadPathMap();
-#if 0 
-	for (HOST_MAP_ITER iter = m_mapNamePath.begin(); iter != m_mapNamePath.end(); iter++)
-		std::cout << iter->first << " : " << iter->second << std::endl;
-	for (HOST_MAP_ITER iter = m_mapNameArgs.begin(); iter != m_mapNameArgs.end(); iter++)
-		std::cout << iter->first << " : " << iter->second << std::endl;
-#endif
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	return;
 }
 
 
-HOST_API::~HOST_API()
+HOST_OPERATOR_API::~HOST_OPERATOR_API()
 {
 }
 
-void HOST_API::run()
-{
-	char buf[_MAX_DATA_SIZE];
-	while (m_pServer->isSocketOpen() == true)
-	{
-		
-		std::cout << "Waiting..." << std::endl;
-		sockaddr client;
-		int msgSize = -1;
-		m_pServer->getPacket(client, buf, msgSize, _MAX_DATA_SIZE);
-		char feedback[50];
-		if (msgSize == sizeof(HOST_MSG))
-		{
-			memset(feedback, 0, 50);
-			HOST_MSG* msg;
-			msg = reinterpret_cast<HOST_MSG*>(buf);
-			//handle controlling instructions here.
-			DWORD error = handle(msg);
-			if (error == ERROR_SUCCESS)
-				sprintf(feedback, "Operation Success.\n");
-			else
-				sprintf(feedback, "Operation Failed.ErrorCode: %ld.\n",error);
-			m_pServer->sendPacket(client, feedback, strlen(feedback), _MAX_DATA_SIZE);
-		}
-
-	}
-
-}
-DWORD HOST_API::handleProgram(std::string filename, const char op,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool isCurDirNeeded)
 {
 	switch (op)
 	{
 	case _OPEN:
-		return createProgram(filename,isCurDirNeeded);
+		return createProgram(filename, isCurDirNeeded);
 	case _CLOSE:
 		return closeProgram(filename);
 	default:
@@ -75,21 +39,67 @@ DWORD HOST_API::handleProgram(std::string filename, const char op,bool isCurDirN
 	}
 
 }
-DWORD HOST_API::createProgram(std::string filename, std::string path, const char* curDir,std::string args, const int arg)
+
+const char* HOST_OPERATOR_API::getPath(std::string filename)
 {
+	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
+	if (iter == m_mapNamePath.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+}
+const char* HOST_OPERATOR_API::getArg(std::string filename)
+{
+	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
+	if (iter == m_mapNameArgs.end())
+		return NULL;
+	else
+		return iter->second.c_str();
+
+}
+const char* HOST_OPERATOR_API::getArg(std::string filename, std::string additional)
+{
+
+	const char* originalArg = getArg(filename);
+	if (originalArg == NULL)
+		return NULL;
+	char buf[MAX_PATH];
+	sprintf(buf, "%s", originalArg);
+	char* p = strstr(buf, "--SettledTime");
+	if (p==NULL)
+	{
+		strcat(buf, additional.c_str());
+	}
+	else
+	{
+		*p = '\0';
+		strcat(buf, additional.c_str());
+	}
+	return buf;
+}
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
+
+{
+	lock();
 	std::cout << filename << " " << path << " " << args << std::endl;
 	HOST_INFO_ITER iter;
 	iter = m_vecProgInfo.find(filename);
 	//Make sure no duplicated task is to be created.
 	if (iter != m_vecProgInfo.end())
 	{
-		std::cout << "duplicated task is to pending." << std::endl;
+		__STD_PRINT("%s\n", "duplicated task is pending.");
+
 		PROCESS_INFORMATION oldInfo = iter->second;
 		DWORD dwExitCode = 0;
 		GetExitCodeProcess(oldInfo.hProcess, &dwExitCode);
-		std::cout << "status of forked process: " << dwExitCode << std::endl;
+
+		__STD_PRINT("status of forked process: %d\n", dwExitCode);
+
 		if (dwExitCode == STILL_ACTIVE)
+		{
+			unlock();
 			return ERROR_SERVICE_EXISTS;
+		}
 		else
 		{
 			CloseHandle(oldInfo.hProcess);
@@ -102,7 +112,7 @@ DWORD HOST_API::createProgram(std::string filename, std::string path, const char
 
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
-
+	si.dwFlags = STARTF_RUNFULLSCREEN;
 	ZeroMemory(&pi, sizeof(pi));
 
 	//Add process access attributes.
@@ -143,12 +153,14 @@ DWORD HOST_API::createProgram(std::string filename, std::string path, const char
 	MultiByteToWideChar(CP_UTF8, 0, args, strlen(args), wArgs, strlen(args));
 	if (CreateProcess(_T("C://Windows//System32//calc.exe"), NULL, 0, 0, false, 0, 0, curDir, &si, &pi) != ERROR_SUCCESS)
 	{
+		unlock();
 		return GetLastError();
 	}
 #else
 	//if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, const_cast<char*>(curDir.c_str()), &si, &pi))
-	if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0,curDir, &si, &pi))
+	if (!CreateProcess(path.c_str(), const_cast<char*>(args.c_str()), 0, 0, false, 0, 0, curDir, &si, &pi))
 	{
+		unlock();
 		return GetLastError();
 	}
 	m_vecProgInfo[filename.c_str()] = pi;
@@ -158,42 +170,61 @@ DWORD HOST_API::createProgram(std::string filename, std::string path, const char
 		std::cout << iter->first << " " << iter->second.dwProcessId << std::endl;
 #endif
 #endif
-
+	unlock();
 	return ERROR_SUCCESS;
 }
-DWORD HOST_API::createProgram(std::string filename,bool isCurDirNeeded)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
 {
 
-	std::string path;
-	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
-	if (iter == m_mapNamePath.end())
+	const char* path = getPath(filename);
+	if (path == NULL)
 		return ERROR_NOT_FOUND;
-	else
-		path = iter->second;
-	iter = m_mapNameArgs.find(filename);
+
 	char* curDir = NULL;
 	if (isCurDirNeeded)
-		curDir = parsePath(path.c_str());
+		curDir = parsePath(path);
+	const char* argv = getArg(filename);
 
-	if (iter != m_mapNameArgs.end())
-		return createProgram(filename, path, curDir,iter->second, 1);
+	char args[MAX_PATH];
+	if (argv != NULL)
+	{
+		strcpy(args, argv);
+
+	}
 	else
-		return createProgram(filename, path,curDir,"",0);
+		strcpy(args, "");
+
+	////Add timestamp to the argv
+	//if (strstr(filename.c_str(), "rcplayer")!= NULL)
+	//{
+	//	char timeStampBuf[40];
+
+	//	//sprintf(timeStampBuf, " --StartTime %ld",)
+
+	//}
+
+	return createProgram(filename, path, curDir, args, 1);
 
 }
-DWORD HOST_API::closeProgram(std::string filename)
+DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 {
+	lock();
 	HOST_INFO_ITER iter;
 	iter = m_vecProgInfo.find(filename);
 	if (iter == m_vecProgInfo.end())
 	{
+		unlock();
 		return ERROR_NOT_FOUND;
 	}
 
 	PROCESS_INFORMATION pi = iter->second;
 
-	if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
-		return GetLastError();
+	//if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
+	//{
+	//	unlock();
+	//	return GetLastError();
+	//}
+
 	DWORD dwExitCode = 0;
 	GetExitCodeProcess(pi.hProcess, &dwExitCode);
 	if (dwExitCode == STILL_ACTIVE)
@@ -209,35 +240,44 @@ DWORD HOST_API::closeProgram(std::string filename)
 	CloseHandle(pi.hThread);
 
 	m_vecProgInfo.erase(iter);
+	unlock();
 	return ERROR_SUCCESS;
 
 }
 
-char* HOST_API::parsePath(const char* fullpath)
+char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 {
-	
+
 	//Parse the full path of the program to be created.
 	//Here we suppose the input path is of the following style:
 	//				c://path//to//program.exe
 	//The current dir shuold be: 
 	//				c://path//to
 	char* p = const_cast<char*>(fullpath);
-	char* start=p;
+	char* start = p;
 	char* sub;
-	while (p!=NULL && (sub = strstr(p, "//")) != NULL)
+	while (p != NULL && (sub = strstr(p, "//")) != NULL)
 		p = sub + 2;
-	int sz=p-start-2;
-	char* curDir=new char[sz];
-	memcpy(curDir,start,sz);
+	int sz = p - start - 2;
+	char* curDir = new char[sz];
+	memcpy(curDir, start, sz);
 	//std::cout<<curDir<<std::endl;
 	return curDir;
 
 }
-DWORD HOST_API::loadPathMap()
-{
 
+HOST_OPERATOR* HOST_OPERATOR::instance()
+{
+	static HOST_OPERATOR inst;
+	return &inst;
+}
+DWORD HOST_OPERATOR::loadConfig(const char* config)
+{
+	if (m_bIsDataLoaded)
+		return 0;
 	char strINIPath[MAX_PATH];
-	_fullpath(strINIPath, "control.ini", MAX_PATH);
+	_fullpath(strINIPath, config, MAX_PATH);
+
 	if (GetFileAttributes(strINIPath) == 0xFFFFFFFF)
 	{
 
@@ -277,37 +317,371 @@ DWORD HOST_API::loadPathMap()
 			memset(attriStr, 0, MAX_PATH);
 		}
 	}
+
+	for (std::vector<std::string>::iterator iter = vecName.begin(); iter != vecName.end(); iter++)
+	{
+		hr = GetPrivateProfileString("Additional", iter->c_str(), "", attriStr, MAX_PATH, strINIPath);
+		if (hr)
+		{
+			m_mapNameAdditionInfo[iter->c_str()] = std::string(attriStr);
+			memset(attriStr, 0, MAX_PATH);
+		}
+	}
+	m_bIsDataLoaded = true;
 	return 0;
 }
-int HOST_API::start()
+
+void HOST_OPERATOR::saveHostName(const char* hostname)
 {
-	m_mutex->lock();
-	return OpenThreads::Thread::start();
+	if (hostname != NULL)
+		strcpy(m_hostname, hostname);
 }
-int HOST_API::startThread()
+const char* HOST_OPERATOR::getHostName()
 {
-	m_mutex->lock();
-	return OpenThreads::Thread::startThread();
+	return m_hostname;
+}
+void HOST_OPERATOR::saveAdapter(const char* addr)
+{
+	if (addr != NULL)
+		m_vecAdapter.push_back(addr);
+}
+const char* HOST_OPERATOR::getPrimaryAdapter()
+{
+	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
+	{
+		if (strncmp(iter->c_str(), "10.", 4) != -1
+			|| strncmp(iter->c_str(), "192.", 4) != -1
+			)
+			return iter->c_str();
+	}
+	return m_vecAdapter[0].c_str();
+}
+void HOST_OPERATOR::saveHostent(const hostent* host)
+{
+	if (host != NULL)
+		m_host = std::unique_ptr<hostent>(const_cast<hostent*>(host));
+}
+const hostent* HOST_OPERATOR::getHostent()
+{
+	return m_host.get();
 }
 
-int HOST_API::cancel()
+void HOST_OPERATOR::setPort(int port)
 {
-	m_mutex->unlock();
-	return OpenThreads::Thread::cancel();
+	m_port = port;
 }
-void HOST_API::initMutex(OpenThreads::Mutex* mutex)
+const int HOST_OPERATOR::getPort()
 {
-	m_mutex = std::auto_ptr<OpenThreads::Mutex>(mutex);
+	return m_port;
 }
-const OpenThreads::Mutex* HOST_API::getMutex() const
+HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 {
-	return m_mutex.get();
+	//use a normal mutex instead of a recursive one.
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+
+	//Assign the server a msg to handle
+	m_taskMsg = std::unique_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-void HOST_API::lock()
+
+void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 {
-	m_mutex->lock();
+
+	const char* composite = getArg(filename, additional);
+	if (composite == NULL)
+		return;
+	
+	//Now Update
+	char temp[MAX_PATH];
+	sprintf(temp, "%s", composite);
+	m_mapNameArgs.erase(filename);
+	m_mapNameArgs[filename.c_str()] = std::string(temp);
+
 }
-void HOST_API::unlock()
+
+DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
 {
-	m_mutex->unlock();
+	char strINIPATH[MAX_PATH];
+	_fullpath(strINIPATH, confg, MAX_PATH);
+	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
+	{
+		FILE* fp=fopen(confg, "w");
+		fclose(fp);
+		return ERROR_NOT_FOUND;
+	}
+
+	CHAR attrStr[MAX_PATH];
+	long hr;
+	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
+	int nSectionsCnt=GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH);
+	CHAR* psection = lpReturnedSections;
+	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
+	std::string app;
+	while (*psection!=0x00)
+	{
+		__STD_PRINT("%s\n", psection);
+		app= std::string(psection);
+		psection += app.size()+1;
+		hr = GetPrivateProfileString(psection,"ip", "", attrStr, MAX_PATH, strINIPATH);
+		m_mapIpFlag[app.c_str()] = 0;
+		memset(attrStr, 0, MAX_PATH);
+	}
+	return ERROR_SUCCESS;
+
+}
+DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
+{
+	/*
+	*Handle miscellaneous conditions for any possible programs here.
+	*/
+	HOST_MAP_ITER iter = m_mapNameAdditionInfo.find(filename);
+	bool isCurDirNeeded = false;
+	if (iter != m_mapNameAdditionInfo.end())
+	{
+
+		if (strstr(iter->second.c_str(), "-m") != NULL)
+		{
+			__STD_PRINT("%s\n", "-m");
+			if (m_vecPipebroadercaster.empty())
+				m_vecPipebroadercaster.push_back(std::unique_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
+
+			if (strstr(filename.c_str(), "video") != NULL)
+			{
+				switch (op)
+				{
+				case _OPEN:
+
+					if (!m_vecPipebroadercaster[0]->isRunning())
+					{
+
+						__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
+						/*
+						*Start a brocaster for signalling the  vlc player to  step frame by frame
+						*/
+						m_vecPipebroadercaster[0]->start();
+					}
+					break;
+				case _CLOSE:
+					__STD_PRINT("%s\n", "Finish signaling the rcplayer");
+					//close the brocaster
+
+					m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
+					m_vecPipebroadercaster[0]->cancel();
+					m_vecPipebroadercaster[0]->cancelCleanup();
+					m_vecPipebroadercaster[0].release();
+					m_vecPipebroadercaster.pop_back();
+					break;
+				}
+			}
+			//TODO:Specify operation for master prog.
+		}
+		if (strstr(iter->second.c_str(), "-s") != NULL)
+		{
+			//TODO:Specigy operatoin for slave prog.
+		}
+		if (strstr(iter->second.c_str(), "-curDir") != NULL)
+		{
+			isCurDirNeeded = true;
+		}
+		if (strstr(iter->second.c_str(), "-defaultDir") != NULL)
+		{
+			isCurDirNeeded = false;
+		}
+	}
+	return HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
+
+}
+
+void HOST_MSGHANDLER::syncTime() const
+{
+
+	FILETIME masterFileTime = m_taskMsg->_time;
+	SYSTEMTIME curSysTime;
+	GetLocalTime(&curSysTime);
+
+	__STD_PRINT("#%d: ", 1); _STD_PRINT_TIME(curSysTime);
+
+	FILETIME curFileTime;
+	SystemTimeToFileTime(&curSysTime, &curFileTime);
+	ULARGE_INTEGER master;
+	ULARGE_INTEGER slave;
+	master.HighPart = masterFileTime.dwHighDateTime;
+	master.LowPart = masterFileTime.dwLowDateTime;
+	slave.HighPart = curFileTime.dwHighDateTime;
+	slave.LowPart = curFileTime.dwLowDateTime;
+
+	/*
+	*
+	*Here we add the timestamp to the arguments list instead of call Sleep.@150110
+	*/
+	if (m_taskMsg->_operation == _OPEN)
+	{
+
+		char timestamp[MAX_PATH];
+		sprintf(timestamp, " --SettledTime-%llu", master.QuadPart);
+
+		_LOG_FORMAT_HOST("%s\n", timestamp);
+
+		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename,timestamp);
+	}
+
+#if 0
+	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
+
+	if (sleepTime < 0)
+		sleepTime = 0;
+	if (sleepTime > 30 * 1000.0)
+		sleepTime = 30 * 1000.0;
+	Sleep(sleepTime);
+	GetLocalTime(&curSysTime);
+	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
+#endif
+}
+const HOST_MSG* HOST_MSGHANDLER::getMSG()
+{
+	return m_taskMsg.get();
+}
+void HOST_MSGHANDLER::handle() const
+{
+#ifdef _TIME_SYNC
+	if (strstr(m_taskMsg->_filename, "video"))
+	{
+		syncTime();
+	}
+#endif
+	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
+
+}
+void HOST_MSGHANDLER::run()
+{
+	lock();
+
+	handle();
+
+	unlock();
+}
+
+
+HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
+{
+
+	m_port = port;
+
+	queryHostInfo(HOST_OPERATOR::instance());
+}
+const char* HOST::getName() const
+{
+	return HOST_OPERATOR::instance()->getHostName();
+}
+const hostent* HOST::getHostent() const
+{
+	return HOST_OPERATOR::instance()->getHostent();
+}
+const char* HOST::getIP() const
+{
+	return HOST_OPERATOR::instance()->getPrimaryAdapter();
+}
+void HOST::queryHostInfo(HOST_OPERATOR* ope)
+{
+
+	if (ope->getHostent() != NULL)
+	{
+		return;
+	}
+	ope->setPort(m_port);
+	char name[MAX_PATH];
+	int error = gethostname(name, MAX_PATH);
+	if (error != 0)
+	{
+		_LOG_FORMAT_HOST("Error in Querying Host.Error Code:%d\n", error);
+		__STD_PRINT("Error in Querying Host.Error Code:%d\n", WSAGetLastError());
+		return;
+	}
+	__STD_PRINT("host: %s\n", name);
+
+	ope->saveHostName(name);
+
+	hostent* hst = gethostbyname(name);
+
+	if (hst == NULL)
+	{
+		_LOG_FORMAT_HOST("%s\n", "Error in getting host info");
+		return;
+	}
+	ope->saveHostent(hst);
+
+	if (hst->h_addrtype == AF_INET)
+	{
+		__STD_PRINT("AddressType: %s, IPV4\n", "AF_INET");
+		int i = 0;
+		char saddr[MAX_PATH];
+
+		while (hst->h_addr_list[i] != NULL)
+		{
+			char* addr = inet_ntoa(*(in_addr*)hst->h_addr_list[i++]);
+			__STD_PRINT("Adapter : %s\n", addr);
+			if (addr != NULL)
+				ope->saveAdapter(addr);
+		}
+	}
+
+}
+void HOST::run()
+{
+	char msgRcv[_MAX_DATA_SIZE];
+	sockaddr client;
+	int sizeRcv;
+	_LOG_INIT_HOST
+		char feedback[64];
+
+	addPipeServer(_RC_PIPE_NAME);
+	/*
+	*Start a udp server to listening  a specified port for signaling the child processes.
+	*/
+
+	std::unique_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
+	pipesignal_handler->start();
+
+	while (isSocketOpen())
+	{
+		sizeRcv = -1;
+		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
+		if (sizeRcv == _MAX_DATA_SIZE)
+		{
+			/*
+			*Start a thread to finish the program openning/closing task.
+			*/
+			std::unique_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			slave->Init();
+			slave->start();
+			slave.release();
+
+		}
+		/*
+		*Send feedback to the central controller.
+		*/
+		strcpy(feedback, getName());
+		strcat(feedback, "#");
+		strcat(feedback, getIP());
+		sendPacket(client, feedback, strlen(feedback), 64);
+	}
+}
+void HOST::addPipeServer(const char* pipename)
+{
+	m_mapNamedPipeServer[pipename] = std::shared_ptr<namedpipeServer>(new namedpipeServer(pipename));
+}
+void HOST::signalPipeClient()
+{
+
+	for (HOST_PIPE_ITER iter = m_mapNamedPipeServer.begin(); iter != m_mapNamedPipeServer.end(); iter++)
+	{
+#ifdef _PIPE_SYNC
+		iter->second->signalClient();
+#else
+		//__STD_PRINT("%s\n", "next_frame");
+#endif
+	}
+}
+HOST_PIPE HOST::getPipeServers()
+{
+	return m_mapNamedPipeServer;
 }
