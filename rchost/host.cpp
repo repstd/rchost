@@ -359,7 +359,7 @@ const char* HOST_OPERATOR::getPrimaryAdapter()
 void HOST_OPERATOR::saveHostent(const hostent* host)
 {
 	if (host != NULL)
-		m_host = std::auto_ptr<hostent>(const_cast<hostent*>(host));
+		m_host = std::unique_ptr<hostent>(const_cast<hostent*>(host));
 }
 const hostent* HOST_OPERATOR::getHostent()
 {
@@ -380,7 +380,7 @@ HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 
 	//Assign the server a msg to handle
-	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
+	m_taskMsg = std::unique_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
 
 void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
@@ -397,6 +397,37 @@ void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 	m_mapNameArgs[filename.c_str()] = std::string(temp);
 
 }
+
+DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
+{
+	char strINIPATH[MAX_PATH];
+	_fullpath(strINIPATH, confg, MAX_PATH);
+	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
+	{
+		FILE* fp=fopen(confg, "w");
+		fclose(fp);
+		return ERROR_NOT_FOUND;
+	}
+
+	CHAR attrStr[MAX_PATH];
+	long hr;
+	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
+	int nSectionsCnt=GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH);
+	CHAR* psection = lpReturnedSections;
+	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
+	std::string app;
+	while (*psection!=0x00)
+	{
+		__STD_PRINT("%s\n", psection);
+		app= std::string(psection);
+		psection += app.size()+1;
+		hr = GetPrivateProfileString(psection,"ip", "", attrStr, MAX_PATH, strINIPATH);
+		m_mapIpFlag[app.c_str()] = 0;
+		memset(attrStr, 0, MAX_PATH);
+	}
+	return ERROR_SUCCESS;
+
+}
 DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 {
 	/*
@@ -411,7 +442,7 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 		{
 			__STD_PRINT("%s\n", "-m");
 			if (m_vecPipebroadercaster.empty())
-				m_vecPipebroadercaster.push_back(std::auto_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
+				m_vecPipebroadercaster.push_back(std::unique_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
 
 			if (strstr(filename.c_str(), "video") != NULL)
 			{
@@ -607,7 +638,7 @@ void HOST::run()
 	*Start a udp server to listening  a specified port for signaling the child processes.
 	*/
 
-	std::auto_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
+	std::unique_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
 
 	while (isSocketOpen())
@@ -619,10 +650,11 @@ void HOST::run()
 			/*
 			*Start a thread to finish the program openning/closing task.
 			*/
-			std::auto_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			std::unique_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
+
 		}
 		/*
 		*Send feedback to the central controller.
@@ -635,7 +667,7 @@ void HOST::run()
 }
 void HOST::addPipeServer(const char* pipename)
 {
-	m_mapNamedPipeServer[pipename] = std::auto_ptr<namedpipeServer>(new namedpipeServer(pipename));
+	m_mapNamedPipeServer[pipename] = std::shared_ptr<namedpipeServer>(new namedpipeServer(pipename));
 }
 void HOST::signalPipeClient()
 {

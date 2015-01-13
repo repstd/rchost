@@ -3,6 +3,7 @@
 
 int RCPLAYER::m_isLocked = -1;
 int RCPLAYER::m_isFliped = 0;
+int RCPLAYER::m_isSleep = 0;
 RCPLAYER_API::RCPLAYER_API()
 {
 
@@ -122,6 +123,7 @@ void RCPLAYER::init()
 	m_vlc = NULL;
 	m_vlcMedia = NULL;
 	m_vlcPlayer = NULL;
+	m_isSleep = false;
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 }
 int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
@@ -152,7 +154,6 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer), libvlc_MediaPlayerEndReached, &RCPLAYER::videoEndFunc, this);
 	_status = INVALID;
 
-	setOrigin(osg::Image::TOP_LEFT);
 
 	return 1;
 }
@@ -173,33 +174,42 @@ int RCPLAYER::open(const char* filename)
 	__STD_PRINT("Opened %s Successfully.\n", filename);
 
 	return 1;
+
 }
-void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsigned int h)
+void RCPLAYER::syncStart()
 {
 
-	setResolution(w, h);
-	open(file.c_str());
 	if (m_targetTime)
 	{
-
 		SYSTEMTIME curSysTime;
 		GetLocalTime(&curSysTime);
-
 		FILETIME curFileTime;
 		SystemTimeToFileTime(&curSysTime, &curFileTime);
-
 		ULARGE_INTEGER slave;
 		slave.HighPart = curFileTime.dwHighDateTime;
 		slave.LowPart = curFileTime.dwLowDateTime;
 
 		ULONGLONG sleepTime = (m_targetTime - slave.QuadPart) / 10000.0;
+
 		__STD_PRINT("Now sleep for %I64u ms\n", sleepTime);
+		__LOG_FORMAT(_PLAYER_LOG, "Now sleep for %I64u ms\n", sleepTime);
+		
 		if (sleepTime < 0)
 			sleepTime = 0;
 		if (sleepTime > 30 * 1000.0)
 			sleepTime = 30 * 1000.0;
 		Sleep(sleepTime);
+
 	}
+	
+}
+void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsigned int h)
+{
+
+	setResolution(w, h);
+
+	open(file.c_str());
+
 	if (needPlay)
 		play();
 }
@@ -283,19 +293,22 @@ float RCPLAYER::getVolume() const
 void RCPLAYER::run()
 {
 	client = std::auto_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
-	play();
 	int cnt = 0;
 
 	while (getState() != libvlc_Ended)
 	{
-
-		if (client->receive() && isLocked() == false)
+		//pause();
+		//m_isSleep = 1;
+		play();
+		if(client->receive()==1)
 		{
+			//play();
+			//m_isSleep = 0;
+			//__STD_PRINT("%s\n", "next");
 			nextFrame();
 			//play();
 			//play();
 		}
-
 	}
 }
 
@@ -355,7 +368,6 @@ void* RCPLAYER::lockFunc(void* data, void** p_pixels)
 		if (now - last >= 1000)
 		{
 			fps = frameCnt;
-
 			__STD_PRINT("FPS: %.0f\n", fps);
 			frameCnt = 0;
 			last = now;
@@ -370,9 +382,10 @@ void RCPLAYER::unlockFunc(void* data, void* id, void* const* p_pixels)
 {
 	BYTE* buf = (BYTE*)data;
 	//RCPLAYER* stream = (RCPLAYER*)data;
-	m_isLocked = false;
-
-
+	while (m_isSleep==1)
+	{
+		sleep();
+	}
 }
 
 void RCPLAYER::displayFunc(void* data, void* id)
@@ -386,7 +399,6 @@ void RCPLAYER::videoEndFunc(const libvlc_event_t*, void* data)
 
 	RCPLAYER* stream = (RCPLAYER*)data;
 	stream->setPosition(0.1);
-	stream->play();
 	stream->play();
 }
 

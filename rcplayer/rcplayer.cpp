@@ -16,7 +16,8 @@
 #include <osg/TexMat>
 #include "player.h"
 #include <stdlib.h>
-osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer,osg::DisplaySettings* ds, osg::GraphicsContext* gc, int x, int y, int width, int height, GLenum buffer, osg::Texture* texture, osgViewer::Keystone* keystone)
+
+osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer, osg::DisplaySettings* ds, osg::GraphicsContext* gc, int x, int y, int width, int height, GLenum buffer, osg::Texture* texture, osgViewer::Keystone* keystone)
 {
 	double screenDistance = ds->getScreenDistance();
 	double screenWidth = ds->getScreenWidth();
@@ -61,6 +62,27 @@ osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer,osg::Displ
 	return camera.release();
 }
 
+class LogFileHandler : public osg::NotifyHandler
+{
+public:
+	LogFileHandler(const std::string& filename) {
+	}
+	void notify(osg::NotifySeverity severity, const char* message) {
+
+		//OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+		//if (!_validFile) return;
+		//_log << message;
+
+	}
+protected:
+	~LogFileHandler(void) {
+		//_log.close();
+	}
+protected:
+	//std::ofstream _log;
+	//OpenThreads::Mutex _mutex;
+	//bool _validFile;
+};
 int main(int argc, char** argv)
 {
 	osg::ArgumentParser arguments(&argc, argv);
@@ -69,6 +91,9 @@ int main(int argc, char** argv)
 	char **vlc_args = (char **)malloc((argc)* sizeof(char *));
 	int realArgc = 0;
 	ULONGLONG targetStartTime = 0;
+
+	__LOG_INIT(_PLAYER_LOG);
+
 	std::string keyStoneCorrFile("D:\\cow.osgt");
 	if (argc < 1)
 	{
@@ -136,25 +161,26 @@ int main(int argc, char** argv)
 	}
 	__STD_PRINT("width: %d ", width);
 	__STD_PRINT("height: %d\n", height);
-
 	RCPLAYER::instance()->initPlayer(vlc_args, realArgc);
 
-	RCPLAYER::instance()->setTargetTime(targetStartTime);
-	if (RCPLAYER::instance() != NULL)
-#ifdef _PIPE_SYNC
-		RCPLAYER::instance()->open(file, false, width, height);
-		RCPLAYER::instance()->start();
-#else
-		RCPLAYER::instance()->open(file, true, width, height);
-#endif
 
+	RCPLAYER::instance()->setTargetTime(targetStartTime);
+
+	if (RCPLAYER::instance() != NULL)
+
+#ifdef _PIPE_SYNC
+	RCPLAYER::instance()->open(file, false, width, height);
+	RCPLAYER::instance()->start();
+#else
+	RCPLAYER::instance()->open(file, true, width, height);
+#endif
 	osgViewer::Viewer viewer;
 	osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
 	traits->x = 0;
 	traits->y = 0;
 	traits->width = width;
 	traits->height = height;
-	traits->windowDecoration = true;
+	traits->windowDecoration = false;
 	traits->doubleBuffer = true;
 	traits->sharedContext = 0;
 
@@ -164,24 +190,34 @@ int main(int argc, char** argv)
 	//	gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
 	//	gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	//}
-
+	
 	osg::DisplaySettings* ds = osg::DisplaySettings::instance();
 	osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keyStoneCorrFile);
-
 	osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
 	texture->setTextureSize(width, height);
 	texture->setImage(RCPLAYER::instance());
 	texture->setResizeNonPowerOfTwoHint(false);
-	osg::Camera* camera = assignKeystoneDistortionCamera(viewer,ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
+	osg::Camera* camera = assignKeystoneDistortionCamera(viewer, ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
 	//camera->getDisplaySettings()->setCompileContextsHint(false);
-	
+
 	viewer.setSceneData(camera);
 	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
+	osg::setNotifyHandler(new LogFileHandler("warn.txt"));
+	int flag=1;
 	while (!viewer.done())
 	{
+
 		RCPLAYER::instance()->updateTexture();
+
 		viewer.frame();
+
 		RCPLAYER::instance()->dirty();
+
+		if (flag)
+		{
+			flag = 0;
+			RCPLAYER::instance()->syncStart();
+		}
 	}
 
 	return 1;

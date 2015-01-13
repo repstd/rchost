@@ -3,6 +3,8 @@
 #include <osg/ImageStream>
 #include "rcpipe.h"
 #define RCPLAYER_MAX_ARGC 15
+
+#define _PLAYER_LOG "./player.log"
 class RCPLAYER_API
 {
 public:
@@ -81,7 +83,13 @@ public:
 	void stop();
 	int isLocked();
 	void setTargetTime(ULONGLONG targetTime);
+	void syncStart();
+
 	void updateTexture();
+	static void sleep()
+	{
+		Sleep(1);
+	}
 	virtual void play();
 	virtual void pause();
 	virtual void rewind();
@@ -93,13 +101,15 @@ public:
 	virtual void setVolume(float vol);
 	virtual float getVolume() const;
 	virtual void run();
+
 	const char* getFilename();
 	ULONGLONG m_targetTime;
-	std::auto_ptr<namedpipeClient> client;
+	std::unique_ptr<namedpipeClient> client;
 	std::string m_filename;
 	static int m_isLocked;
 	static int m_isFliped;
 	BYTE* m_frameBuf;
+	static int m_isSleep;
 };
 
 

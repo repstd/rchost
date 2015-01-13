@@ -17,7 +17,7 @@ public:
 	HOST_LISTENER::HOST_LISTENER(const client* cl)
 		:THREAD(), rcmutex()
 	{
-		m_client = std::auto_ptr<client>(const_cast<client*>(cl));
+		m_client = std::unique_ptr<client>(const_cast<client*>(cl));
 	}
 	virtual void run()
 	{
@@ -50,7 +50,7 @@ public:
 
 	}
 
-	std::auto_ptr<client> m_client;
+	std::unique_ptr<client> m_client;
 };
 
 class HOSTLISTENER : public THREAD, rcmutex, client
@@ -99,14 +99,14 @@ public:
 	}
 
 };
-typedef std::vector<std::auto_ptr<HOSTLISTENER>> LISTENER_THREAD_POOL;
+typedef std::vector<std::unique_ptr<HOSTLISTENER>> LISTENER_THREAD_POOL;
 int main(int argc, char *argv[])
 {
 	std::cout
 		<< "Usage: " << std::endl
 		<< "control host(optional) port(optional)" << std::endl
 		<< "\nTo specify the path and the arguments list of the programs,modify the 'control.ini' in the directory of the hosting program." << std::endl;
-	std::auto_ptr<client> rc(new client());
+	std::unique_ptr<client> rc(new client());
 	int defaultPort = 20715;
 	//cmd:control
 	if (argc < 2)
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		return 0;
 
 	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ini");
-	std::auto_ptr<_MSG> msg(new _MSG());
+	std::unique_ptr<_MSG> msg(new _MSG());
 	msg->_operation = _OPEN;
 	//msg->_prog = _MANHATTAN;
 	char buf[_MSG_BUF_SIZE];
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 	LISTENER_THREAD_POOL vecListenerClientPool;
 	for (int i = 0; i < 24; i++)
 	{
-		vecListenerClientPool.push_back(std::auto_ptr<HOSTLISTENER>(new HOSTLISTENER(rc->getSocket())));
+		vecListenerClientPool.push_back(std::unique_ptr<HOSTLISTENER>(new HOSTLISTENER(rc->getSocket())));
 
 	}
 #endif
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 			iter->get()->start();
 		}
 #else
-		static std::auto_ptr<HOST_LISTENER> listener(new HOST_LISTENER(rc.get()));
+		static std::unique_ptr<HOST_LISTENER> listener(new HOST_LISTENER(rc.get()));
 		listener->Init();
 		listener->start();
 #endif

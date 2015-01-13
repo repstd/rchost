@@ -26,9 +26,18 @@
 #endif
 typedef std::map<std::string, std::string>::iterator HOST_MAP_ITER;
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;
-typedef std::map < std::string, std::auto_ptr<namedpipeServer>> HOST_PIPE;
-typedef std::map < std::string, std::auto_ptr<namedpipeServer>>::iterator HOST_PIPE_ITER;
+typedef std::map < std::string, std::shared_ptr<namedpipeServer>> HOST_PIPE;
+typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST_PIPE_ITER;
+struct cmp
+{
 
+	bool operator()(std::string a, std::string b)
+	{
+
+		return strcmp(a.c_str(), b.c_str());
+	}
+
+};
 class PIPESIGNAL_BROCASTER :protected client, public THREAD
 {
 
@@ -37,22 +46,56 @@ public:
 		client(port, NULL),
 		THREAD()
 	{
-
+		loadIP("ip.ini");
+		__STD_PRINT("%s\n", "ip list loaded");
 	}
+	DWORD loadIP(const char* confg);
 	virtual void run()
 	{
-
+		char msgRcv[_MAX_DATA_SIZE];
+		int size = -1;
 		while (isSocketOpen())
 		{
 			char* msg = "pipe";
+			struct sockaddr from;
 			sendPacket(msg, strlen(msg));
+
+			while (1)
+			{
+				getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
+				std::string ms(msgRcv);
+				m_mapIpFlag[msgRcv] = 1;
+				int allReceived = 1;
+				for (std::map<std::string, int,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+				{
+
+					if (iter->second == 0)
+					{
+						allReceived = 0;
+						//_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
+						break;
+					}
+				}
+				if (allReceived==1)
+				{
+					for (std::map<std::string, int,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+					{
+						iter->second = 0;
+					}
+					//__STD_PRINT("%s\n", "All Reveived.");
+					break;
+				}
+			}
 		}
 	}
 	virtual int cancel()
 	{
-
 		return THREAD::cancel();
 	}
+
+	std::map<std::string, int,cmp> m_mapIpFlag;
+
+
 };
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
@@ -93,7 +136,7 @@ public:
 	//We can use this to add timestamp and something else to the child process.
 
 	void updateArg(std::string filename, std::string additional);
-	
+
 	static HOST_OPERATOR* instance();
 
 
@@ -105,7 +148,9 @@ public:
 	const hostent* getHostent();
 	void setPort(int port);
 	const int getPort();
-				
+
+	DWORD loadIP(const char* confg);
+
 protected:
 	HOST_OPERATOR()
 		:HOST_OPERATOR_API()
@@ -117,11 +162,11 @@ private:
 	bool m_bIsDataLoaded;
 	//Host information
 	char m_hostname[MAX_PATH];
-	std::auto_ptr<hostent> m_host;
+	std::unique_ptr<hostent> m_host;
 	int m_port;
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
-	std::vector < std::auto_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
+	std::vector < std::unique_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
 
 };
 
@@ -138,7 +183,7 @@ public:
 protected:
 
 	void syncTime() const;
-	std::auto_ptr<HOST_MSG> m_taskMsg;
+	std::unique_ptr<HOST_MSG> m_taskMsg;
 
 };
 
@@ -151,7 +196,7 @@ public:
 	PIPESERVER(const char* pipename)
 	{
 
-		m_pipeServer = std::auto_ptr<namedpipeServer>(new namedpipeServer(pipename));
+		m_pipeServer = std::unique_ptr<namedpipeServer>(new namedpipeServer(pipename));
 	}
 	virtual void run()
 	{
@@ -185,7 +230,7 @@ public:
 		THREAD::cancel();
 
 	}
-	std::auto_ptr<namedpipeServer> m_pipeServer;
+	std::unique_ptr<namedpipeServer> m_pipeServer;
 };
 
 class HOST :protected server, public THREAD, rcmutex
@@ -207,42 +252,43 @@ public:
 	HOST_PIPE getPipeServers();
 private:
 
-	std::map < std::string, std::auto_ptr<namedpipeServer>> m_mapNamedPipeServer;
+	std::map < std::string, std::shared_ptr<namedpipeServer>> m_mapNamedPipeServer;
 	int m_port;
 };
 class PIPESIGNAL_HANDLER :protected server, public THREAD
 {
-public:	
-	PIPESIGNAL_HANDLER(HOST* host,const int port) :
-	server(port),
-	THREAD()
+public:
+	PIPESIGNAL_HANDLER(HOST* host, const int port) :
+		server(port),
+		THREAD()
 	{
-		m_host = std::auto_ptr<HOST>(host);
+		m_host = std::unique_ptr<HOST>(host);
 	}
 	virtual void run()
 	{
 		char msgRcv[MAX_PATH];
 		sockaddr client;
 		int szRcv = -1;
+		const char* received = HOST_OPERATOR::instance()->getHostName();
 		while (isSocketOpen())
 		{
 			szRcv = -1;
 			getPacket(client, msgRcv, szRcv, MAX_PATH);
 			if (szRcv != -1)
 			{
-
 				char* msgStr = (char*)msgRcv;
 				if (strstr(msgStr, "pipe") != NULL)
 				{
+					//__STD_PRINT("tring to %s\n", "SignalPipeClient");
 					m_host->signalPipeClient();
 				}
-
+				sendPacket(client, const_cast<char*>(received), strlen(received) + 1, _MAX_DATA_SIZE);
 			}
 
 		}
 
 	}
 private:
-	std::auto_ptr<HOST> m_host;
+	std::unique_ptr<HOST> m_host;
 };
 #endif

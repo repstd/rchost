@@ -24,10 +24,12 @@ class CTRLHOST_OPERATOR :public HOST_CONFIG_API, public rcmutex
 {
 
 public:
+
 	static CTRLHOST_OPERATOR* instance();
 	void addClientIP(const char* name,const char* ip);
 	virtual DWORD loadConfig(const char* confg);
 	virtual DWORD updateConfig(const char* confg);
+	
 protected:
 	CTRLHOST_OPERATOR()
 		:HOST_CONFIG_API(), rcmutex()

@@ -193,10 +193,9 @@ int namedpipeClient::receive()
 			&cbRead,  // number of bytes read 
 			NULL);    // not overlapped 
 
-		if (!fSuccess)
-			break;
-		//__STD_PRINT("\"%s\"\n", buf);
-	} while (!fSuccess);  // repeat loop if ERROR_MORE_DATA 
+	} while (cbRead==0);  // repeat loop if ERROR_MORE_DATA 
+
+	//__STD_PRINT("\"%s\"\n", buf);
 
 	if (!fSuccess)
 	{

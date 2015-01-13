@@ -27,7 +27,7 @@ DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
 
 	while (*psection!=0x00)
 	{
-		//__STD_PRINT("%s\n", psection);
+		__STD_PRINT("%s\n", psection);
 		app= std::string(psection);
 		psection += app.size()+1;
 		hr = GetPrivateProfileString(psection,"ip", "", attrStr, MAX_PATH, strINIPATH);
@@ -37,6 +37,9 @@ DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
 	unlock();
 	return ERROR_SUCCESS;
 }
+
+
+
 DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
 {
 	lock();
@@ -68,7 +71,6 @@ DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
 			unlock();
 			return GetLastError();
 		}
-		
 		__DEBUG_PRINT("added section: %s\n", iter->first.c_str());
 	}
 	unlock();

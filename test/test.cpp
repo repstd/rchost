@@ -7,7 +7,7 @@
 int _tmain(int argc, _TCHAR* argv[])
 {
 	
-	std::auto_ptr<namedpipeClient> client(new namedpipeClient(_RC_PIPE_NAME));
+	std::unique_ptr<namedpipeClient> client(new namedpipeClient(_RC_PIPE_NAME));
 
 	while (1)
 	{

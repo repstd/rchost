@@ -16,6 +16,6 @@ protected:
 	void lock() const;
 	void unlock() const;
 private:
-	mutable std::auto_ptr<MUTEX> m_mutex;
+	mutable std::unique_ptr<MUTEX> m_mutex;
 };
 

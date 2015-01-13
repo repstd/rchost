@@ -13,7 +13,7 @@ rcmutex::~rcmutex()
 }
 void rcmutex::initMutex(MUTEX* mutex) const
 {
-	m_mutex = std::auto_ptr<MUTEX>(mutex);
+	m_mutex = std::unique_ptr<MUTEX>(mutex);
 }
 const MUTEX* rcmutex::getMutex() const
 {
