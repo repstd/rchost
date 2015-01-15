@@ -11,7 +11,7 @@ public:
 	~server();
 
 public:
-	bool initForPort(int portNumber);
+	int initForPort(int portNumber);
 	virtual int initSocket(int port, ULONG S_addr);
 
 };

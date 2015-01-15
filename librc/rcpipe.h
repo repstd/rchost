@@ -35,11 +35,11 @@ public:
 	virtual int read(void* msgBuf, const DWORD sizeAllocated, DWORD& sizeRead, const LPOVERLAPPED overlap)
 	{
 		int fSuccess = ReadFile(
-			m_hPipe,        // handle to pipe 
-			msgBuf,			// buffer to receive data 
+			m_hPipe,			// handle to pipe 
+			msgBuf,				// buffer to receive data 
 			sizeAllocated,
-			&sizeRead, // number of bytes read 
-			NULL);        // not overlapped I/O 
+			&sizeRead,			// number of bytes read 
+			overlap);			// not overlapped I/O 
 
 		if (!fSuccess || sizeRead == 0)
 		{

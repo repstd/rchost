@@ -11,7 +11,7 @@ public:
 	RCPLAYER_API();
 	~RCPLAYER_API();
 
-protected:
+public:
 	virtual int initPlayer(const char* const* vlc_argv = 0, const int argc = 0) = 0;
 	//virtual int initPlayer(const char* vlc_argv[]) = 0;
 	virtual int open(const char* filename) = 0;
@@ -28,7 +28,7 @@ protected:
 	{
 		return 1;
 	}
-	const libvlc_media_player_t* getMediaPlayer() const;
+	libvlc_media_player_t* getMediaPlayer() const;
 	virtual float getPosition();
 	virtual int setPosition(float pos);
 	virtual int isPlaying();
@@ -46,26 +46,21 @@ class RCPLAYER :
 {
 public:
 	RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
+
 	static RCPLAYER* instance();
+
 	virtual int initPlayer(const char* const* vlc_argv = 0, const int argc = 0);
 	//virtual int initPlayer(const char* vlc_argv[]);
 	META_Object(osg, RCPLAYER)
 
 protected:
-
 	RCPLAYER();
-
 	~RCPLAYER()
 	{
-
-		if (_status != INVALID)
-		{
-			libvlc_media_player_stop(m_vlcPlayer);
-			libvlc_media_player_release(m_vlcPlayer);
-		}
-
-		libvlc_release(m_vlc);
-
+		//setCancelModeAsynchronous();
+		//cancel();
+		//cancelCleanup();
+		exit(0);
 	}
 public:
 	static void* lockFunc(void* data, void** p_pixels);
@@ -84,7 +79,6 @@ public:
 	int isLocked();
 	void setTargetTime(ULONGLONG targetTime);
 	void syncStart();
-
 	void updateTexture();
 	static void sleep()
 	{
@@ -110,6 +104,27 @@ public:
 	static int m_isFliped;
 	BYTE* m_frameBuf;
 	static int m_isSleep;
+	static RCPLAYER* m_inst;
+};
+
+class errorHandler: public osg::NotifyHandler
+{
+public:
+	errorHandler()
+	{
+
+	}
+	errorHandler(const std::string& filename)
+	{
+	}
+	void notify(osg::NotifySeverity severity, const char* message) 
+	{
+
+	}
+protected:
+	~errorHandler(void) {
+
+	}
 };
 
 

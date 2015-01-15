@@ -20,27 +20,57 @@ libvlc_state_t RCPLAYER_API::getState()
 }
 int RCPLAYER_API::rcplay()
 {
-	libvlc_state_t state = getState();
-	switch (state)
+	//libvlc_state_t state = getState();
+	//switch (state)
+	//{
+	//case libvlc_Paused:
+	//	libvlc_media_player_play(m_vlcPlayer);
+	//	break;
+	//case libvlc_Playing:
+	//	libvlc_media_player_set_pause(m_vlcPlayer, true);
+	//	break;
+	//case libvlc_Ended:
+	//	libvlc_media_player_play(m_vlcPlayer);
+	//	break;
+	//default:
+	//	return 0;
+	//}
+	libvlc_state_t state;
+	libvlc_media_player_play(m_vlcPlayer);
+	while (1)
 	{
-	case libvlc_Paused:
-		libvlc_media_player_play(m_vlcPlayer);
-		break;
-	case libvlc_Playing:
-		libvlc_media_player_set_pause(m_vlcPlayer, true);
-		break;
-	case libvlc_Ended:
-		libvlc_media_player_play(m_vlcPlayer);
-		break;
-	default:
-		return 0;
+		state = libvlc_media_player_get_state(m_vlcPlayer);
+#ifdef _VLC_IMPLEMENTATION
+		__STD_PRINT("%s\n", "waiting");
+#endif
+		if (state == libvlc_Playing)
+			break;
 	}
 	return 1;
 }
 
 int RCPLAYER_API::rcpause()
 {
-	libvlc_media_player_set_pause(m_vlcPlayer, true);
+	libvlc_state_t state;
+rcpause_redo:	
+	while (1)
+	{
+#ifdef _VLC_IMPLEMENTATION
+		__STD_PRINT("%s\n", "RCPAUSE");
+#endif
+		if (libvlc_media_player_can_pause(m_vlcPlayer))
+		{
+			break;
+		}
+	}
+	libvlc_media_player_set_pause(m_vlcPlayer,true);
+	//libvlc_media_player_pause(m_vlcPlayer);
+	state = libvlc_media_player_get_state(m_vlcPlayer);
+	if (state == libvlc_Paused)
+		goto rcpause_end;
+	else
+		goto rcpause_redo;
+rcpause_end:
 	return 1;
 }
 int RCPLAYER_API::rcstop()
@@ -71,8 +101,9 @@ int RCPLAYER_API::setPosition(float pos)
 {
 	libvlc_media_player_set_position(m_vlcPlayer, pos);
 	return 1;
+
 }
-const libvlc_media_player_t* RCPLAYER_API::getMediaPlayer() const
+libvlc_media_player_t* RCPLAYER_API::getMediaPlayer() const
 {
 	return m_vlcPlayer;
 }
@@ -91,12 +122,17 @@ int RCPLAYER_API::setResolution(int w, int h)
 }
 
 
+RCPLAYER* RCPLAYER::m_inst = new RCPLAYER;
 
 RCPLAYER* RCPLAYER::instance()
 {
-	static RCPLAYER player;
-	return &player;
+	if (!m_inst)
+	{
+		m_inst = new RCPLAYER;
+	}
+	return m_inst;
 }
+
 RCPLAYER::RCPLAYER() :
 osg::ImageStream(),
 THREAD(),
@@ -141,19 +177,27 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 			"--no-video-title-show",
 			//"--network-caching=120"
 		};
-
 		m_vlc = libvlc_new(sizeof(vlc_args) / sizeof(vlc_args[0]), vlc_args);
 	}
 	else
 	{
 		m_vlc = libvlc_new(argc, vlc_argv);
-
+	}
+	if (!m_vlc)
+	{
+		__STD_PRINT("%s\n", "Failed to Init VLCInit.Exit.");
+		exit(0);
+	}
+	m_vlcPlayer = libvlc_media_player_new(m_vlc);
+	if (!m_vlcPlayer)
+	{
+		__STD_PRINT("%s\n", "Failed to Init VLCMedia.Exit.");
+		exit(0);
 	}
 
-	m_vlcPlayer = libvlc_media_player_new(m_vlc);
 	libvlc_event_attach(libvlc_media_player_event_manager(m_vlcPlayer), libvlc_MediaPlayerEndReached, &RCPLAYER::videoEndFunc, this);
-	_status = INVALID;
 
+	_status = INVALID;
 
 	return 1;
 }
@@ -162,15 +206,20 @@ int RCPLAYER::open(const char* filename)
 {
 
 	m_vlcMedia = libvlc_media_new_path(m_vlc, filename);
+	if (!m_vlcMedia)
+	{
+		__STD_PRINT("%s\n", "Failed to Open File.Exit.");
+		exit(0);
+	}
+
 	libvlc_media_player_set_media(m_vlcPlayer, m_vlcMedia);
 	libvlc_video_set_format(m_vlcPlayer, "RGBA", m_width, m_height, m_width * 4);
 	allocateImage(m_width, m_height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
 	m_frameBuf = (BYTE*)calloc(1, getImageSizeInBytes());
 
 	libvlc_video_set_callbacks(m_vlcPlayer, &RCPLAYER::lockFunc, &RCPLAYER::unlockFunc, &RCPLAYER::displayFunc, m_frameBuf);
+	
 	m_filename = filename;
-
 	__STD_PRINT("Opened %s Successfully.\n", filename);
 
 	return 1;
@@ -210,8 +259,10 @@ void RCPLAYER::open(const std::string& file, bool needPlay, unsigned int w, unsi
 
 	open(file.c_str());
 
+
 	if (needPlay)
 		play();
+
 }
 
 void RCPLAYER::play()
@@ -225,8 +276,7 @@ void RCPLAYER::play()
 	//{
 	//	libvlc_media_player_play(m_vlcPlayer);
 	//}
-
-	if (_status != PLAYING)
+	if (_status!=PLAYING)
 	{
 		libvlc_media_player_play(m_vlcPlayer);
 		_status = PLAYING;
@@ -294,22 +344,22 @@ void RCPLAYER::run()
 {
 	client = std::shared_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
 	int cnt = 0;
-
-	while (getState() != libvlc_Ended)
+	//play();
+	while (m_vlc&&client.get())
 	{
 		//pause();
 		//m_isSleep = 1;
-		play();
 		if(client->receive()==1)
 		{
 			//play();
 			//m_isSleep = 0;
 			//__STD_PRINT("%s\n", "next");
-			nextFrame();
-			//play();
-			//play();
+			//nextFrame();
+			play();
+			play();
 		}
 	}
+	__STD_PRINT("%s\n", "PipeClient Exit Successfully.");
 }
 
 const char* RCPLAYER::getFilename()

@@ -59,7 +59,7 @@ int server::initSocket(int port, ULONG S_addr)
 	return true;
 
 }
-bool server::initForPort(int portNumber)
+int server::initForPort(int portNumber)
 {
 
 	return initSocket(portNumber, htonl(INADDR_ANY));

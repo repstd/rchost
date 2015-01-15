@@ -40,33 +40,33 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool
 
 }
 
-const char* HOST_OPERATOR_API::getPath(std::string filename)
+std::string HOST_OPERATOR_API::getPath(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
 	if (iter == m_mapNamePath.end())
 		return NULL;
 	else
-		return iter->second.c_str();
+		return iter->second;
 }
-const char* HOST_OPERATOR_API::getArg(std::string filename)
+std::string HOST_OPERATOR_API::getArg(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
 	if (iter == m_mapNameArgs.end())
 		return NULL;
 	else
-		return iter->second.c_str();
+		return iter->second;
 
 }
-const char* HOST_OPERATOR_API::getArg(std::string filename, std::string additional)
+std::string HOST_OPERATOR_API::getArg(std::string filename, std::string additional)
 {
 
-	const char* originalArg = getArg(filename);
-	if (originalArg == NULL)
+	std::string originalArg = getArg(filename).c_str();
+	if (originalArg.c_str() == NULL)
 		return NULL;
 	char buf[MAX_PATH];
-	sprintf(buf, "%s", originalArg);
+	sprintf(buf, "%s", originalArg.c_str());
 	char* p = strstr(buf, "--SettledTime");
-	if (p==NULL)
+	if (p == NULL)
 	{
 		strcat(buf, additional.c_str());
 	}
@@ -77,7 +77,7 @@ const char* HOST_OPERATOR_API::getArg(std::string filename, std::string addition
 	}
 	return buf;
 }
-DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int arg)
+DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc)
 
 {
 	lock();
@@ -176,20 +176,19 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
 {
 
-	const char* path = getPath(filename);
-	if (path == NULL)
+	std::string strPath = getPath(filename);
+	if (strPath.empty())
 		return ERROR_NOT_FOUND;
 
 	char* curDir = NULL;
 	if (isCurDirNeeded)
-		curDir = parsePath(path);
-	const char* argv = getArg(filename);
+		curDir = parsePath(strPath.c_str());
 
+	std::string strArgv = getArg(filename).c_str();
 	char args[MAX_PATH];
-	if (argv != NULL)
+	if (!strArgv.empty())
 	{
-		strcpy(args, argv);
-
+		strcpy(args, strArgv.c_str());
 	}
 	else
 		strcpy(args, "");
@@ -203,7 +202,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded
 
 	//}
 
-	return createProgram(filename, path, curDir, args, 1);
+	return createProgram(filename, strPath, curDir, args, 1);
 
 }
 DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
@@ -265,11 +264,14 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 	return curDir;
 
 }
-
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-	static HOST_OPERATOR inst;
-	return &inst;
+	//if (m_inst == NULL)
+	//{
+	//	m_inst = new HOST_OPERATOR;
+	//}
+	static HOST_OPERATOR m_inst;
+	return &m_inst;
 }
 DWORD HOST_OPERATOR::loadConfig(const char* config)
 {
@@ -374,22 +376,14 @@ const int HOST_OPERATOR::getPort()
 {
 	return m_port;
 }
-HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
-{
-	//use a normal mutex instead of a recursive one.
-	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
-
-	//Assign the server a msg to handle
-	m_taskMsg = std::unique_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
-}
 
 void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 {
 
-	const char* composite = getArg(filename, additional);
+	const char* composite = getArg(filename, additional).c_str();
 	if (composite == NULL)
 		return;
-	
+
 	//Now Update
 	char temp[MAX_PATH];
 	sprintf(temp, "%s", composite);
@@ -404,7 +398,7 @@ DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
 	_fullpath(strINIPATH, confg, MAX_PATH);
 	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
 	{
-		FILE* fp=fopen(confg, "w");
+		FILE* fp = fopen(confg, "w");
 		fclose(fp);
 		return ERROR_NOT_FOUND;
 	}
@@ -412,17 +406,20 @@ DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
 	CHAR attrStr[MAX_PATH];
 	long hr;
 	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
-	int nSectionsCnt=GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH);
+	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
+	{
+		return ERROR_NOT_FOUND;
+	}
 	CHAR* psection = lpReturnedSections;
 	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
 	std::string app;
-	while (*psection!=0x00)
+	while (*psection != 0x00)
 	{
 		__STD_PRINT("%s\n", psection);
-		app= std::string(psection);
-		psection += app.size()+1;
-		hr = GetPrivateProfileString(psection,"ip", "", attrStr, MAX_PATH, strINIPATH);
-		m_mapIpFlag[app.c_str()] = 0;
+		app = std::string(psection);
+		psection += app.size() + 1;
+		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		m_mapIpFlag[app.c_str()] = false;
 		memset(attrStr, 0, MAX_PATH);
 	}
 	return ERROR_SUCCESS;
@@ -442,10 +439,8 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 		{
 			__STD_PRINT("%s\n", "-m");
 			if (m_vecPipebroadercaster.empty())
-				m_vecPipebroadercaster.push_back(std::unique_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
+				m_vecPipebroadercaster.push_back(std::auto_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
 
-			if (strstr(filename.c_str(), "video") != NULL)
-			{
 				switch (op)
 				{
 				case _OPEN:
@@ -471,12 +466,11 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 					m_vecPipebroadercaster.pop_back();
 					break;
 				}
-			}
 			//TODO:Specify operation for master prog.
 		}
 		if (strstr(iter->second.c_str(), "-s") != NULL)
 		{
-			//TODO:Specigy operatoin for slave prog.
+			//TODO:Specify operatoins for slave prog.
 		}
 		if (strstr(iter->second.c_str(), "-curDir") != NULL)
 		{
@@ -489,6 +483,40 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 	}
 	return HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
 
+}
+
+HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
+{
+	//use a normal mutex instead of a recursive one.
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+
+	//Assign the server a msg to handle
+	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
+}
+void HOST_MSGHANDLER::setMSG(HOST_MSG* msg)
+{
+			
+	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
+}
+const HOST_MSG* HOST_MSGHANDLER::getMSG()
+{
+	return m_taskMsg.get();
+}
+void HOST_MSGHANDLER::handle() const
+{
+#ifdef _TIME_SYNC
+	syncTime();
+#endif
+	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
+
+}
+void HOST_MSGHANDLER::run()
+{
+	lock();
+
+	handle();
+
+	unlock();
 }
 
 void HOST_MSGHANDLER::syncTime() const
@@ -521,7 +549,7 @@ void HOST_MSGHANDLER::syncTime() const
 
 		_LOG_FORMAT_HOST("%s\n", timestamp);
 
-		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename,timestamp);
+		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename, timestamp);
 	}
 
 #if 0
@@ -535,29 +563,6 @@ void HOST_MSGHANDLER::syncTime() const
 	GetLocalTime(&curSysTime);
 	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 #endif
-}
-const HOST_MSG* HOST_MSGHANDLER::getMSG()
-{
-	return m_taskMsg.get();
-}
-void HOST_MSGHANDLER::handle() const
-{
-#ifdef _TIME_SYNC
-	if (strstr(m_taskMsg->_filename, "video"))
-	{
-		syncTime();
-	}
-#endif
-	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
-
-}
-void HOST_MSGHANDLER::run()
-{
-	lock();
-
-	handle();
-
-	unlock();
 }
 
 
@@ -613,7 +618,6 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 	{
 		__STD_PRINT("AddressType: %s, IPV4\n", "AF_INET");
 		int i = 0;
-		char saddr[MAX_PATH];
 
 		while (hst->h_addr_list[i] != NULL)
 		{
@@ -640,7 +644,6 @@ void HOST::run()
 
 	std::unique_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
-
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
@@ -650,11 +653,13 @@ void HOST::run()
 			/*
 			*Start a thread to finish the program openning/closing task.
 			*/
+
 			std::unique_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
-
+			//slave->Init();
+			//slave->handle();
 		}
 		/*
 		*Send feedback to the central controller.

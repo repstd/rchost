@@ -21,13 +21,15 @@ DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
 	CHAR attrStr[MAX_PATH];
 	long hr;
 	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
-	int nSectionsCnt=GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH);
+	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
+	{
+		return ERROR_SUCCESS;
+	}
 	CHAR* psection = lpReturnedSections;
 	std::string app;
-
+	
 	while (*psection!=0x00)
 	{
-		__STD_PRINT("%s\n", psection);
 		app= std::string(psection);
 		psection += app.size()+1;
 		hr = GetPrivateProfileString(psection,"ip", "", attrStr, MAX_PATH, strINIPATH);

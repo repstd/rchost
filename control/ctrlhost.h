@@ -9,7 +9,7 @@
 struct StringComparerForMap
 {
 public:
-	bool operator()(std::string x, std::string y)
+	int operator()(std::string x, std::string y)
 	{
 		return strcmp(x.c_str(), y.c_str());
 	}
@@ -38,3 +38,4 @@ protected:
 	}
 	CRTLHOST_MAP m_mapNameIP;
 };
+

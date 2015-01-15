@@ -56,7 +56,15 @@ struct _MSG
 		memset(_pBuf, 0, _MSG_BUF_SIZE*sizeof(char));
 		memset(_pSize, 0, _MSG_ARGC*sizeof(int));
 	}
-
+	bool operator==(_MSG& other)
+	{
+		if (_operation == other._operation)
+			return true;
+		if (strcmp(_filename, other._filename) == 0)
+			return true;
+		//TODO: Add more restrictions	
+		return false;
+	}
 	char _operation;
 	char _prog;
 	char _filename[30];

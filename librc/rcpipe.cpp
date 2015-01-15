@@ -112,6 +112,7 @@ int namedpipeServer::signalClient()
 	if (connect())
 	{
 		write(msg, strlen(msg), sizeWritten, NULL);
+
 		disconnect();
 	}
 
@@ -147,8 +148,6 @@ HANDLE namedpipeClient::createPipe(const char* pipeName)
 
 		if (GetLastError() != ERROR_PIPE_BUSY)
 		{
-				
-
 			__STD_PRINT("Could not open pipe. GLE=%d\n", GetLastError());
 			return NULL;
 		}

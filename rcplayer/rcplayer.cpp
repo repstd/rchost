@@ -15,6 +15,7 @@
 #include <osgViewer/Viewer>
 #include <osg/TexMat>
 #include "player.h"
+#include "rcviewer.h"
 #include <stdlib.h>
 
 osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer, osg::DisplaySettings* ds, osg::GraphicsContext* gc, int x, int y, int width, int height, GLenum buffer, osg::Texture* texture, osgViewer::Keystone* keystone)
@@ -62,29 +63,156 @@ osg::Camera* assignKeystoneDistortionCamera(osgViewer::Viewer& viewer, osg::Disp
 	return camera.release();
 }
 
-class LogFileHandler : public osg::NotifyHandler
-{
-public:
-	LogFileHandler(const std::string& filename) {
-	}
-	void notify(osg::NotifySeverity severity, const char* message) {
-
-		//OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
-		//if (!_validFile) return;
-		//_log << message;
-
-	}
-protected:
-	~LogFileHandler(void) {
-		//_log.close();
-	}
-protected:
-	//std::ofstream _log;
-	//OpenThreads::Mutex _mutex;
-	//bool _validFile;
-};
+//int main(int argc, char** argv)
+//{
+//	return 0;
+//}
+//int main(int argc, char** argv)
+//{
+//	osg::ArgumentParser arguments(&argc, argv);
+//	std::string file;
+//	int width = 1280, height = 800;
+//	char **vlc_args = (char **)malloc((argc)* sizeof(char *));
+//	int realArgc = 0;
+//	ULONGLONG targetStartTime = 0;
+//
+//	__LOG_INIT(_PLAYER_LOG);
+//
+//	std::string keyStoneCorrFile("D:\\cow.osgt");
+//	if (argc < 1)
+//	{
+//		file = std::string("Data\\1.avi");
+//		//return 0;
+//	}
+//	else
+//	{
+//
+//		file = std::string(argv[0]);
+//		int flag;
+//		char *p = NULL;
+//		for (int i = 1; i < argc; i++)
+//		{
+//			flag = 0;
+//			p = strstr(argv[i], "--width");
+//			if (p != NULL)
+//			{
+//				p = strstr(argv[i] + 2, "-");
+//				if (p != NULL)
+//				{
+//					width = atoi(p + 1);
+//				}
+//				flag = 1;
+//			}
+//
+//			p = strstr(argv[i], "--height");
+//			if (p != NULL)
+//			{
+//				p = strstr(argv[i] + 2, "-");
+//				if (p != NULL)
+//				{
+//					height = atoi(p + 1);
+//				}
+//
+//				flag = 1;
+//			}
+//			p = strstr(argv[i], "--SettledTime");
+//			if (p != NULL)
+//			{
+//				flag = 1;
+//				p = strstr(argv[i] + 2, "-");
+//				if (p != NULL)
+//				{
+//					sscanf(p + 1, "%I64u", &targetStartTime);
+//				}
+//			}
+//			p = strstr(argv[i], "--keyStone");
+//			if (p != NULL)
+//			{
+//				flag = 1;
+//				p = strstr(argv[i] + 2, "-");
+//				if (p != NULL)
+//				{
+//					keyStoneCorrFile = std::string(p + 1);
+//				}
+//
+//			}
+//			if (flag)
+//				continue;
+//			vlc_args[realArgc] = (char*)malloc(sizeof(char*));
+//			vlc_args[realArgc++] = argv[i];
+//
+//		}
+//	}
+//	__STD_PRINT("width: %d ", width);
+//	__STD_PRINT("height: %d\n", height);
+//	RCPLAYER::instance()->initPlayer(vlc_args, realArgc);
+//
+//
+//	RCPLAYER::instance()->setTargetTime(targetStartTime);
+//
+//	if (RCPLAYER::instance() != NULL)
+//
+//#ifdef _PIPE_SYNC
+//	RCPLAYER::instance()->open(file, false, width, height);
+//	RCPLAYER::instance()->start();
+//#else
+//	RCPLAYER::instance()->open(file, true, width, height);
+//#endif
+//	osgViewer::Viewer viewer;
+//	osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
+//	traits->x = 0;
+//	traits->y = 0;
+//	traits->width = width;
+//	traits->height = height;
+//	traits->windowDecoration = false;
+//	traits->doubleBuffer = true;
+//	traits->sharedContext = 0;
+//
+//	osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+//
+//	//if (gc.valid())
+//	//{
+//	//	gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
+//	//	gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//	//}
+//	
+//	osg::DisplaySettings* ds = osg::DisplaySettings::instance();
+//
+//	osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keyStoneCorrFile);
+//	osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
+//	texture->setTextureSize(width, height);
+//	texture->setImage(RCPLAYER::instance());
+//	texture->setResizeNonPowerOfTwoHint(false);
+//
+//	osg::Camera* camera=assignKeystoneDistortionCamera(viewer, ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
+//	viewer.setSceneData(camera);
+//	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
+//	osg::setNotifyHandler(new LogFileHandler("warn.txt"));
+//
+//	int flag=1;
+//	while (!viewer.done())
+//	{
+//
+//		RCPLAYER::instance()->updateTexture();
+//
+//		viewer.frame();
+//
+//		RCPLAYER::instance()->dirty();
+//
+//		if (flag)
+//		{
+//			flag = 0;
+//			RCPLAYER::instance()->syncStart();
+//		}
+//	}
+//	__STD_PRINT("%s\n", "done");
+//	RCPLAYER::instance()->quit();
+//	viewer.setDone(true);
+//	return 1;
+//}
 int main(int argc, char** argv)
 {
+
 	osg::ArgumentParser arguments(&argc, argv);
 	std::string file;
 	int width = 1280, height = 800;
@@ -93,9 +221,9 @@ int main(int argc, char** argv)
 	ULONGLONG targetStartTime = 0;
 
 	__LOG_INIT(_PLAYER_LOG);
-
+	
 	std::string keyStoneCorrFile("D:\\cow.osgt");
-	if (argc < 1)
+	if (argc <= 1)
 	{
 		file = std::string("Data\\1.avi");
 		//return 0;
@@ -161,66 +289,23 @@ int main(int argc, char** argv)
 	}
 	__STD_PRINT("width: %d ", width);
 	__STD_PRINT("height: %d\n", height);
-	RCPLAYER::instance()->initPlayer(vlc_args, realArgc);
-
-
-	RCPLAYER::instance()->setTargetTime(targetStartTime);
-
-	if (RCPLAYER::instance() != NULL)
-
-#ifdef _PIPE_SYNC
-	RCPLAYER::instance()->open(file, false, width, height);
-	RCPLAYER::instance()->start();
+#ifdef _VLC_IMPLEMENTATION
+	playerImp* imp = impFactory::instance()->createRCVLCImp();
+	vlcImp* vlc = (vlcImp*)imp;
+	vlc->initPlayer(vlc_args, realArgc);
+	vlc->open(file, false, width, height);
+	vlc->setTargetTime(targetStartTime);
+	rcviewer* viewer= new rcviewer(vlc);
 #else
-	RCPLAYER::instance()->open(file, true, width, height);
+	cvImp* opencvImp = (cvImp*)impFactory::instance()->createOpenCVImp();
+	opencvImp->open(file);
+	opencvImp->setTargetTime(targetStartTime);
+	rcviewer* viewer= new rcviewer(opencvImp);
 #endif
-	osgViewer::Viewer viewer;
-	osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
-	traits->x = 0;
-	traits->y = 0;
-	traits->width = width;
-	traits->height = height;
-	traits->windowDecoration = false;
-	traits->doubleBuffer = true;
-	traits->sharedContext = 0;
+	//Here we use OpenCV Implementation
 
-	osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
-	//if (gc.valid())
-	//{
-	//	gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
-	//	gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//}
-	
-	osg::DisplaySettings* ds = osg::DisplaySettings::instance();
-	osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keyStoneCorrFile);
-	osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-	texture->setTextureSize(width, height);
-	texture->setImage(RCPLAYER::instance());
-	texture->setResizeNonPowerOfTwoHint(false);
+	viewer->setupViewer(width, height, keyStoneCorrFile.c_str());
+	viewer->run();
 
-	osg::Camera* camera = assignKeystoneDistortionCamera(viewer, ds, gc, 0, 0, width, height, GL_COLOR, texture, keystone);
-
-	viewer.setSceneData(camera);
-	viewer.addEventHandler(new osgViewer::WindowSizeHandler);
-	osg::setNotifyHandler(new LogFileHandler("warn.txt"));
-
-	int flag=1;
-
-	while (!viewer.done())
-	{
-
-		RCPLAYER::instance()->updateTexture();
-
-		viewer.frame();
-
-		RCPLAYER::instance()->dirty();
-
-		//if (flag)
-		//{
-		//	flag = 0;
-		//	RCPLAYER::instance()->syncStart();
-		//}
-	}
-
-	return 1;
+	return 0;
 }

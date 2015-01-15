@@ -31,10 +31,14 @@ typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST
 struct cmp
 {
 
-	bool operator()(std::string a, std::string b)
+	bool operator()(const std::string a, const std::string b)
 	{
 
-		return strcmp(a.c_str(), b.c_str());
+
+		if (strcmp(a.c_str(), b.c_str()))
+			return true;
+		else
+			return false;
 	}
 
 };
@@ -54,33 +58,32 @@ public:
 	{
 		char msgRcv[_MAX_DATA_SIZE];
 		int size = -1;
+		std::string strMsg;
 		while (isSocketOpen())
 		{
 			char* msg = "pipe";
 			struct sockaddr from;
 			sendPacket(msg, strlen(msg));
-
 			while (1)
 			{
 				getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
-				std::string ms(msgRcv);
-				m_mapIpFlag[msgRcv] = 1;
+				strMsg.assign(msgRcv);
+				m_mapIpFlag[strMsg.c_str()] = true;
 				int allReceived = 1;
-				for (std::map<std::string, int,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+				for (std::map<const std::string, bool,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
 				{
-
-					if (iter->second == 0)
+					if (!iter->second )
 					{
 						allReceived = 0;
-						//_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
+						_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
 						break;
 					}
 				}
 				if (allReceived==1)
 				{
-					for (std::map<std::string, int,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+					for (std::map<const std::string, bool,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
 					{
-						iter->second = 0;
+						iter->second = false;
 					}
 					//__STD_PRINT("%s\n", "All Reveived.");
 					break;
@@ -93,9 +96,7 @@ public:
 		return THREAD::cancel();
 	}
 
-	std::map<std::string, int,cmp> m_mapIpFlag;
-
-
+	std::map<const std::string, bool,cmp> m_mapIpFlag;
 };
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
@@ -104,15 +105,12 @@ class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
 public:
 	HOST_OPERATOR_API();
 	~HOST_OPERATOR_API();
-	virtual DWORD HandleProgram(std::string filename, const char op)
-	{
-		return 0;
-	}
+	virtual DWORD handleProgram(std::string filename, const char op)= 0;
 	virtual DWORD handleProgram(std::string filename, const char op, bool isCurDirNeeded);
 protected:
-	const char* getPath(std::string filename);
-	const char* getArg(std::string filename);
-	const char* getArg(std::string filename, std::string additional);
+	std::string getPath(std::string filename);
+	std::string getArg(std::string filename);
+	std::string getArg(std::string filename, std::string additional);
 
 	DWORD createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
@@ -131,15 +129,12 @@ class HOST_OPERATOR
 	:public HOST_OPERATOR_API
 {
 public:
+	static HOST_OPERATOR* instance();
+
 	virtual DWORD loadConfig(const char* filename);
 	virtual DWORD handleProgram(std::string filename, const char op);
 	//We can use this to add timestamp and something else to the child process.
-
 	void updateArg(std::string filename, std::string additional);
-
-	static HOST_OPERATOR* instance();
-
-
 	void saveHostName(const char* hostname);
 	const char* getHostName();
 	void saveAdapter(const char* addr);
@@ -157,6 +152,9 @@ protected:
 	{
 		m_bIsDataLoaded = false;
 	}
+	~HOST_OPERATOR()
+	{
+	}
 private:
 	bool m_bQueit;
 	bool m_bIsDataLoaded;
@@ -166,7 +164,9 @@ private:
 	int m_port;
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
-	std::vector < std::unique_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
+	//std::auto_ptr<PIPESIGNAL_BROCASTER> m_pipeBrocaster;
+	std::vector < std::auto_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
+
 
 };
 
@@ -176,14 +176,16 @@ class HOST_MSGHANDLER :public THREAD, public rcmutex
 
 public:
 	HOST_MSGHANDLER(const HOST_MSG* msg);
+
 	virtual void handle() const;
 	virtual void run();
 	const HOST_MSG* getMSG();
+	void setMSG(HOST_MSG* msg);
 
 protected:
 
 	void syncTime() const;
-	std::unique_ptr<HOST_MSG> m_taskMsg;
+	std::auto_ptr<HOST_MSG> m_taskMsg;
 
 };
 
@@ -251,7 +253,6 @@ public:
 	const char* getIP() const;
 	HOST_PIPE getPipeServers();
 private:
-
 	std::map < std::string, std::shared_ptr<namedpipeServer>> m_mapNamedPipeServer;
 	int m_port;
 };

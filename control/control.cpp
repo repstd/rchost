@@ -10,6 +10,11 @@
 #include <stdio.h>
 #include <memory>
 #include <iostream>
+static char* test_instruction[2] =
+{
+	"image 1 0",
+	"image 0 0"
+};
 
 class HOST_LISTENER : public THREAD, rcmutex
 {
@@ -63,7 +68,7 @@ public:
 	}
 	virtual void run()
 	{
-
+		
 		char msgRcv[_MAX_DATA_SIZE];
 		memset(msgRcv, 0, _MAX_DATA_SIZE);
 		sockaddr client;
@@ -74,14 +79,10 @@ public:
 			getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 			//if (GetLastError() == WSAEWOULDBLOCK)
 			//	Sleep(10);
-			lock();
 			__STD_PRINT("%d ", getThreadId());
-			unlock();
 			if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
 			{
-			lock();
 				__STD_PRINT("%s\n", msgRcv);
-			unlock();
 			}
 			char* delimeter = strstr(msgRcv, "#");
 			if (delimeter)
@@ -99,7 +100,49 @@ public:
 	}
 
 };
+class LISTENERTHREAD:public client
+{
+
+public:
+	LISTENERTHREAD(const SOCKET socket)
+		:client(socket)
+	{
+		
+	}
+	void operator()()
+	{
+		
+		char msgRcv[_MAX_DATA_SIZE];
+		memset(msgRcv, 0, _MAX_DATA_SIZE);
+		sockaddr client;
+		int sizeRcv;
+		while (isSocketOpen())
+		{
+			sizeRcv = -1;
+			getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
+			//if (GetLastError() == WSAEWOULDBLOCK)
+			//	Sleep(10);
+			if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
+			{
+				__STD_PRINT("%s\n", msgRcv);
+			}
+			char* delimeter = strstr(msgRcv, "#");
+			if (delimeter)
+			{
+				*delimeter = '\0';
+				__DEBUG_PRINT("%s\n", msgRcv);
+				__DEBUG_PRINT("%s\n", delimeter + 1);
+				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
+			}
+			CTRLHOST_OPERATOR::instance()->updateConfig("clients.ini");
+
+			memset(msgRcv, 0, _MAX_DATA_SIZE);
+		}
+
+	}
+};
 typedef std::vector<std::unique_ptr<HOSTLISTENER>> LISTENER_THREAD_POOL;
+
 int main(int argc, char *argv[])
 {
 	std::cout
@@ -124,8 +167,11 @@ int main(int argc, char *argv[])
 		return 0;
 
 	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ini");
-	std::unique_ptr<_MSG> msg(new _MSG());
+	_MSG* msg = new _MSG;
 	msg->_operation = _OPEN;
+
+	_MSG* pre = new _MSG;
+
 	//msg->_prog = _MANHATTAN;
 	char buf[_MSG_BUF_SIZE];
 	int cnt = 0;
@@ -138,12 +184,12 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < 24; i++)
 	{
 		vecListenerClientPool.push_back(std::unique_ptr<HOSTLISTENER>(new HOSTLISTENER(rc->getSocket())));
-
 	}
 #endif
-	while (++cnt < 50)
+	while (++cnt < 10000000)
 	{
-		writeArgs(msg.get(), buf);
+		writeArgs(msg, buf);
+		
 		scanf("%s %d %d", msg->_filename, &op, &et);
 		if (op == 0)
 			msg->_operation = _CLOSE;
@@ -156,9 +202,7 @@ int main(int argc, char *argv[])
 			std::cout << "Error:  The elapse time in which the slave programs are to be invoked should be no less than 0." << std::endl;
 			continue;
 		}
-		if (et == 0)
-			et+=1;
-		msg->_elapseTime = et;
+		msg->_elapseTime = et+1;
 		SYSTEMTIME systime;
 		FILETIME  filetime;
 		GetLocalTime(&systime);
@@ -166,7 +210,7 @@ int main(int argc, char *argv[])
 		//_STD_PRINT_TIME(systime);
 
 		//Invoke the slaves in 5 seconds
-		systime.wSecond += et;
+		systime.wSecond += et+1;
 		if (systime.wSecond > 59)
 		{
 			systime.wSecond = 0;
@@ -188,16 +232,18 @@ int main(int argc, char *argv[])
 
 		SystemTimeToFileTime(&systime, &filetime);
 		msg->_time = filetime;
-
-		rc->sendPacket((char*)msg.get(), sizeof(_MSG));
+		if ((*pre) == (*msg))
+				continue;
+		memcpy(pre, msg, sizeof(msg));
+		rc->sendPacket((char*)msg, sizeof(_MSG));
 		if (cnt > 1)
 			continue;
 
 #ifdef _MULTI_THREAD_SAME_PORT_LISTEN
 		for (LISTENER_THREAD_POOL::iterator iter = vecListenerClientPool.begin(); iter != vecListenerClientPool.end(); iter++)
 		{
-			iter->get()->Init();
-			iter->get()->start();
+			(*iter)->Init();
+			(*iter)->start();
 		}
 #else
 		static std::unique_ptr<HOST_LISTENER> listener(new HOST_LISTENER(rc.get()));
@@ -206,10 +252,7 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-	//for (LISTENER_THREAD_POOL::iterator iter = vecListenerClientPool.begin(); iter != vecListenerClientPool.end();iter++)
-	//{
-	//	iter->get()->join();
-	//}
-	return 0;
+
+	exit(0);
 }
 
