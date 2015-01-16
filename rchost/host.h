@@ -64,28 +64,36 @@ public:
 			char* msg = "pipe";
 			struct sockaddr from;
 			sendPacket(msg, strlen(msg));
+#if 0
+			__STD_PRINT("%s\n", "message Sent");
+#endif
 			while (1)
 			{
+#if 0
+				__STD_PRINT("%s\n", "waiting...");
+#endif
 				getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
 				strMsg.assign(msgRcv);
 				m_mapIpFlag[strMsg.c_str()] = true;
 				int allReceived = 1;
-				for (std::map<const std::string, bool,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+				for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
 				{
-					if (!iter->second )
+					if (!iter->second)
 					{
 						allReceived = 0;
 						_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
 						break;
 					}
 				}
-				if (allReceived==1)
+				if (allReceived == 1)
 				{
-					for (std::map<const std::string, bool,cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+					for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
 					{
 						iter->second = false;
 					}
-					//__STD_PRINT("%s\n", "All Reveived.");
+#if 0
+					__STD_PRINT("%s\n", "All Reveived.");
+#endif
 					break;
 				}
 			}
@@ -96,7 +104,54 @@ public:
 		return THREAD::cancel();
 	}
 
-	std::map<const std::string, bool,cmp> m_mapIpFlag;
+	std::map<const std::string, bool, cmp> m_mapIpFlag;
+};
+class multiListener;
+static std::map<const std::string, bool, cmp> m_mapIpFlag;
+class listenerSlave :
+	public client, public THREAD, rcmutex
+{
+public:
+	listenerSlave(SOCKET socket) :THREAD(), client(), rcmutex()
+	{
+		m_socket = socket;
+		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+	}
+	virtual void run();
+
+	multiListener* m_host;
+};
+class multiListener :protected client, public THREAD, public rcmutex
+{
+
+public:
+	multiListener(const int port) :
+		client(port, NULL),
+		THREAD(),
+		rcmutex()
+	{
+		loadIP("ip.ini");
+		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+		__STD_PRINT("%s\n", "ip list loaded");
+	}
+	~multiListener()
+	{
+		for (std::vector<std::shared_ptr<listenerSlave>>::iterator iter = m_vecSlaves.begin(); iter != m_vecSlaves.end(); iter++)
+		{
+			(*iter)->setCancelModeAsynchronous();
+			(*iter)->cancel();
+		}
+	}
+	DWORD loadIP(const char* confg);
+	
+	virtual void run();
+	
+	virtual int cancel()
+	{
+		return THREAD::cancel();
+	}
+
+	std::vector<std::shared_ptr<listenerSlave>> m_vecSlaves;
 };
 //Abstract of a class for finishing the tasks assigned to the host.
 class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
@@ -105,7 +160,7 @@ class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
 public:
 	HOST_OPERATOR_API();
 	~HOST_OPERATOR_API();
-	virtual DWORD handleProgram(std::string filename, const char op)= 0;
+	virtual DWORD handleProgram(std::string filename, const char op) = 0;
 	virtual DWORD handleProgram(std::string filename, const char op, bool isCurDirNeeded);
 protected:
 	std::string getPath(std::string filename);
@@ -151,9 +206,12 @@ protected:
 		:HOST_OPERATOR_API()
 	{
 		m_bIsDataLoaded = false;
+
 	}
 	~HOST_OPERATOR()
 	{
+		delete[] m_inst;
+		__STD_PRINT("%s\n", "host removed.");
 	}
 private:
 	bool m_bQueit;
@@ -165,8 +223,8 @@ private:
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
 	//std::auto_ptr<PIPESIGNAL_BROCASTER> m_pipeBrocaster;
-	std::vector < std::auto_ptr<PIPESIGNAL_BROCASTER>> m_vecPipebroadercaster;
-
+	std::vector < std::auto_ptr<multiListener>> m_vecPipebroadercaster;
+	static HOST_OPERATOR* m_inst;
 
 };
 
@@ -207,11 +265,8 @@ public:
 		GetLocalTime(&systime);
 		_STD_ENCODE_TIMESTAMP(log, systime);
 		_LOG_FORMAT_HOST("%s", log);
-
-		_LOG_FORMAT_HOST("%s\n", "connected");
 		while (1)
 		{
-
 			m_pipeServer->signalClient();
 			memset(log, 0, 512);
 			GetLocalTime(&systime);
@@ -224,13 +279,9 @@ public:
 	}
 	virtual void cancle()
 	{
-
 		m_pipeServer->disconnect();
-
 		m_pipeServer->closeHandle();
-
 		THREAD::cancel();
-
 	}
 	std::unique_ptr<namedpipeServer> m_pipeServer;
 };
@@ -243,7 +294,6 @@ public:
 	{
 
 	}
-
 	virtual void run();
 	void addPipeServer(const char* pipename);
 	void signalPipeClient();

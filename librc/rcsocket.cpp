@@ -62,10 +62,8 @@ int rcsocket::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 
 		size = recv(m_sclient, (char*)data, maxsize, 0);
 #else
-
 		size = recvfrom(m_socket, (char*)data, maxSize, 0, (sockaddr*)&from, &len);
-
-#ifndef _MULTI_THREAD_SAME_PORT_LISTEN
+#if 0
 		fd_set fdset;
 		FD_ZERO(&fdset);
 		FD_SET(m_socket, &fdset);
@@ -80,12 +78,12 @@ int rcsocket::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 				size = recvfrom(m_socket, (char *)data, maxSize, 0, (sockaddr*)&from, &len);
 			}
 		}
+#endif
 		if (size == -1)
 		{
 			__STD_PRINT("Error in receiving data:%d", WSAGetLastError());
 			return false;
 		}
-#endif
 #endif
 	}
 	else

@@ -44,7 +44,7 @@ std::string HOST_OPERATOR_API::getPath(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
 	if (iter == m_mapNamePath.end())
-		return NULL;
+		return "";
 	else
 		return iter->second;
 }
@@ -185,6 +185,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded
 		curDir = parsePath(strPath.c_str());
 
 	std::string strArgv = getArg(filename).c_str();
+	__STD_PRINT("Fetched Args: %s\n", strArgv.c_str());
 	char args[MAX_PATH];
 	if (!strArgv.empty())
 	{
@@ -218,11 +219,11 @@ DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 
 	PROCESS_INFORMATION pi = iter->second;
 
-	//if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
-	//{
-	//	unlock();
-	//	return GetLastError();
-	//}
+	if (!PostThreadMessage(pi.dwThreadId, WM_QUIT, 0, 0))
+	{
+		unlock();
+		return GetLastError();
+	}
 
 	DWORD dwExitCode = 0;
 	GetExitCodeProcess(pi.hProcess, &dwExitCode);
@@ -264,19 +265,15 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 	return curDir;
 
 }
+
+HOST_OPERATOR* HOST_OPERATOR::m_inst = new HOST_OPERATOR;
 HOST_OPERATOR* HOST_OPERATOR::instance()
 {
-	//if (m_inst == NULL)
-	//{
-	//	m_inst = new HOST_OPERATOR;
-	//}
-	static HOST_OPERATOR m_inst;
-	return &m_inst;
+
+	return m_inst;
 }
 DWORD HOST_OPERATOR::loadConfig(const char* config)
 {
-	if (m_bIsDataLoaded)
-		return 0;
 	char strINIPath[MAX_PATH];
 	_fullpath(strINIPath, config, MAX_PATH);
 
@@ -329,7 +326,6 @@ DWORD HOST_OPERATOR::loadConfig(const char* config)
 			memset(attriStr, 0, MAX_PATH);
 		}
 	}
-	m_bIsDataLoaded = true;
 	return 0;
 }
 
@@ -380,16 +376,21 @@ const int HOST_OPERATOR::getPort()
 void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 {
 
+	lock();
 	const char* composite = getArg(filename, additional).c_str();
+
 	if (composite == NULL)
+	{
+		unlock();
 		return;
+	}
 
 	//Now Update
 	char temp[MAX_PATH];
 	sprintf(temp, "%s", composite);
 	m_mapNameArgs.erase(filename);
 	m_mapNameArgs[filename.c_str()] = std::string(temp);
-
+	unlock();
 }
 
 DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
@@ -430,44 +431,11 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 	/*
 	*Handle miscellaneous conditions for any possible programs here.
 	*/
+
 	HOST_MAP_ITER iter = m_mapNameAdditionInfo.find(filename);
 	bool isCurDirNeeded = false;
 	if (iter != m_mapNameAdditionInfo.end())
 	{
-
-		if (strstr(iter->second.c_str(), "-m") != NULL)
-		{
-			__STD_PRINT("%s\n", "-m");
-			if (m_vecPipebroadercaster.empty())
-				m_vecPipebroadercaster.push_back(std::auto_ptr<PIPESIGNAL_BROCASTER>(new PIPESIGNAL_BROCASTER(_RC_PIPE_BROADCAST_PORT)));
-
-				switch (op)
-				{
-				case _OPEN:
-
-					if (!m_vecPipebroadercaster[0]->isRunning())
-					{
-
-						__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
-						/*
-						*Start a brocaster for signalling the  vlc player to  step frame by frame
-						*/
-						m_vecPipebroadercaster[0]->start();
-					}
-					break;
-				case _CLOSE:
-					__STD_PRINT("%s\n", "Finish signaling the rcplayer");
-					//close the brocaster
-
-					m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
-					m_vecPipebroadercaster[0]->cancel();
-					m_vecPipebroadercaster[0]->cancelCleanup();
-					m_vecPipebroadercaster[0].release();
-					m_vecPipebroadercaster.pop_back();
-					break;
-				}
-			//TODO:Specify operation for master prog.
-		}
 		if (strstr(iter->second.c_str(), "-s") != NULL)
 		{
 			//TODO:Specify operatoins for slave prog.
@@ -480,9 +448,48 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 		{
 			isCurDirNeeded = false;
 		}
-	}
-	return HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
 
+	}
+
+	HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
+
+	if (iter != m_mapNameAdditionInfo.end())
+	{
+		if (strstr(iter->second.c_str(), "-m") != NULL)
+		{
+			__STD_PRINT("%s\n", "-m");
+			if (m_vecPipebroadercaster.empty())
+				m_vecPipebroadercaster.push_back(std::auto_ptr<multiListener>(new multiListener(_RC_PIPE_BROADCAST_PORT)));
+
+			switch (op)
+			{
+			case _OPEN:
+
+				if (!m_vecPipebroadercaster[0]->isRunning())
+				{
+
+					__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
+					/*
+					*Start a brocaster for signalling the  vlc player to  step frame by frame
+					*/
+					m_vecPipebroadercaster[0]->start();
+				}
+				break;
+			case _CLOSE:
+				__STD_PRINT("%s\n", "Finish signaling the rcplayer");
+				//close the brocaster
+
+				m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
+				m_vecPipebroadercaster[0]->cancel();
+				m_vecPipebroadercaster[0]->cancelCleanup();
+				m_vecPipebroadercaster[0].release();
+				m_vecPipebroadercaster.pop_back();
+				break;
+			}
+			//TODO:Specify operation for master prog.
+		}
+	}
+	return ERROR_SUCCESS;
 }
 
 HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
@@ -495,7 +502,7 @@ HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 }
 void HOST_MSGHANDLER::setMSG(HOST_MSG* msg)
 {
-			
+
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
 const HOST_MSG* HOST_MSGHANDLER::getMSG()
@@ -504,9 +511,10 @@ const HOST_MSG* HOST_MSGHANDLER::getMSG()
 }
 void HOST_MSGHANDLER::handle() const
 {
-#ifdef _TIME_SYNC
-	syncTime();
-#endif
+
+//#ifdef _TIME_SYNC
+//	syncTime();
+//#endif
 	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
 
 }
@@ -537,10 +545,12 @@ void HOST_MSGHANDLER::syncTime() const
 	slave.HighPart = curFileTime.dwHighDateTime;
 	slave.LowPart = curFileTime.dwLowDateTime;
 
+#if 0 
 	/*
 	*
 	*Here we add the timestamp to the arguments list instead of call Sleep.@150110
 	*/
+
 	if (m_taskMsg->_operation == _OPEN)
 	{
 
@@ -551,8 +561,7 @@ void HOST_MSGHANDLER::syncTime() const
 
 		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename, timestamp);
 	}
-
-#if 0
+#else
 	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
 
 	if (sleepTime < 0)
@@ -561,6 +570,7 @@ void HOST_MSGHANDLER::syncTime() const
 		sleepTime = 30 * 1000.0;
 	Sleep(sleepTime);
 	GetLocalTime(&curSysTime);
+
 	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 #endif
 }
@@ -641,9 +651,10 @@ void HOST::run()
 	/*
 	*Start a udp server to listening  a specified port for signaling the child processes.
 	*/
-
+#ifdef _PIPE_SYNC
 	std::unique_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
+#endif
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
@@ -653,11 +664,11 @@ void HOST::run()
 			/*
 			*Start a thread to finish the program openning/closing task.
 			*/
-
 			std::unique_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
+			//slave->join();
 			//slave->Init();
 			//slave->handle();
 		}
@@ -689,4 +700,138 @@ void HOST::signalPipeClient()
 HOST_PIPE HOST::getPipeServers()
 {
 	return m_mapNamedPipeServer;
+}
+
+
+void listenerSlave::run()
+{
+	char msgRcv[_MAX_DATA_SIZE];
+	int size = -1;
+	sockaddr in;
+	std::string strMsg;
+	std::map<const std::string, bool, cmp>::iterator iter;
+	while (isSocketOpen())
+	{
+		size = -1;
+		getPacket(in, msgRcv, size, _MAX_DATA_SIZE);
+		if (size != -1)
+		{
+			strMsg.assign(msgRcv);
+
+			iter = m_mapIpFlag.find(strMsg.c_str());
+			lock();
+			if (iter != m_mapIpFlag.end())
+				iter->second = true;
+			unlock();
+			__STD_PRINT("%d\t Fliped:\t", getThreadId());
+			__STD_PRINT("%s\n ", strMsg.c_str());
+		}
+	}
+}
+
+DWORD multiListener::loadIP(const char* confg)
+{
+
+	char strINIPATH[MAX_PATH];
+	_fullpath(strINIPATH, confg, MAX_PATH);
+	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
+	{
+		FILE* fp = fopen(confg, "w");
+		fclose(fp);
+		return ERROR_NOT_FOUND;
+	}
+
+	CHAR attrStr[MAX_PATH];
+	long hr;
+	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
+	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
+	{
+		return ERROR_NOT_FOUND;
+	}
+	CHAR* psection = lpReturnedSections;
+	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
+	std::string app;
+	while (*psection != 0x00)
+	{
+		__STD_PRINT("%s\n", psection);
+		app = std::string(psection);
+		psection += app.size() + 1;
+		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		m_mapIpFlag[app.c_str()] = false;
+		memset(attrStr, 0, MAX_PATH);
+	}
+	return ERROR_SUCCESS;
+
+
+}
+void multiListener::run()
+{
+	char msgRcv[_MAX_DATA_SIZE];
+	int size = -1;
+	std::string strMsg;
+	int first = 1;
+	Sleep(5000);
+	int cnt = 0;
+	int frameToPlay = 200;
+	SYSTEMTIME time;
+	while (isSocketOpen())
+	{
+		
+		GetLocalTime(&time);
+		sendPacket((char*)(&(time)), sizeof(SYSTEMTIME));
+		struct sockaddr from;
+		if (first)
+		{
+			first = 0;
+
+			for (int i = 0; i < 24; i++)
+			{
+				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
+				slave->Init();
+				slave->start();
+				m_vecSlaves.push_back(slave);
+			}
+		}
+		Sleep(10);
+		cnt = 0;
+		while (1)
+		{
+			cnt += 1;
+			int allReceived = 1;
+			int torlerance = 0;
+			for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+			{
+				if (!iter->second)
+				{
+					allReceived = 0;
+					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
+					torlerance +=1;
+				}
+			}
+			if (torlerance < 2)
+				allReceived = 1;
+			if (cnt>300)
+			{
+				__STD_PRINT("%s\n", "Expired.");
+				allReceived = 1;
+			}
+			//for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+			//{
+			//	__STD_PRINT("%s  ", iter->first.c_str());
+			//	__STD_PRINT("%d \n", iter->second);
+			//}
+			if (allReceived == 1)
+			{
+				lock();
+				for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+				{
+					iter->second = false;
+				}
+				unlock();
+				__STD_PRINT("%s\n", "All received.");
+				__STD_PRINT("%s\n", "*******************************");
+				break;
+			}
+		}
+	}
 }

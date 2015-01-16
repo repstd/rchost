@@ -28,6 +28,7 @@ public:
 	{
 		return 1;
 	}
+	void release();
 	libvlc_media_player_t* getMediaPlayer() const;
 	virtual float getPosition();
 	virtual int setPosition(float pos);

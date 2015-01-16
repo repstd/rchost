@@ -134,8 +134,8 @@ int vlcImp::initPlayer(const char* const* vlc_argv, const int argc)
 	else
 	{
 		m_vlc = libvlc_new(argc, vlc_argv);
-
 	}
+
 	if (!m_vlc)
 	{
 
@@ -161,6 +161,29 @@ int vlcImp::initPlayer(const char* const* vlc_argv, const int argc)
 
 int vlcImp::open(const char* filename)
 {
+
+	FILE* tryOpen = fopen(filename, "r");
+	if (tryOpen == NULL)
+	{
+		__STD_PRINT("%s\n", "Failed to Open File.Exit.");
+		exit(0);
+	}
+	else
+	{
+		fclose(tryOpen);
+	}
+	if (strstr(filename, "avi") == NULL && strstr(filename, "bmp") == NULL)
+	{
+		release();
+		exit(0);
+	}
+
+	m_vlcMedia = libvlc_media_new_path(m_vlc, filename);
+	if (!m_vlcMedia)
+	{
+		__STD_PRINT("%s\n", "Failed to Init Media.Exit.");
+		exit(0);
+	}
 
 	m_vlcMedia = libvlc_media_new_path(m_vlc, filename);
 	if (!m_vlcMedia)
@@ -290,7 +313,6 @@ void vlcImp::updateTexture()
 	BYTE* p = data();
 	unsigned int rowStepInBytes = getRowStepInBytes();
 	unsigned int imageStepInBytes = getImageStepInBytes();
-
 	for (int j = 0; j < m_height; j++)
 	{
 		memcpy(p + (m_height - 1 - j)*rowStepInBytes, m_frameBuf + j*rowStepInBytes, rowStepInBytes);
@@ -374,21 +396,31 @@ void vlcImp::videoEndFunc(const libvlc_event_t*, void* data)
 
 int cvImp::open(std::string filename)
 {
+	FILE* tryOpen = fopen(filename.c_str(), "r");
+	if (tryOpen == NULL)
+	{
+		__STD_PRINT("%s\n", "Failed to Open File.Exit.");
+		exit(0);
+	}
+	else
+	{
+		fclose(tryOpen);
+	}
 	m_videoDevice.open(filename);
 	if (!m_videoDevice.isOpened())
 	{
 		__STD_PRINT("%s\n", "opencv video capture: failed to open the media.")
 			exit(0);
 	}
-	m_srcWidth=m_videoDevice.get(CV_CAP_PROP_FRAME_WIDTH);
+	m_filename = filename;
+	m_srcWidth = m_videoDevice.get(CV_CAP_PROP_FRAME_WIDTH);
 	m_srcHeight = m_videoDevice.get(CV_CAP_PROP_FRAME_HEIGHT);
 	m_srcChannels = 4;
 	m_srcFrameCnts = m_videoDevice.get(CV_CAP_PROP_FRAME_COUNT);
 	if (strstr(filename.c_str(), "bmp") ||
 		strstr(filename.c_str(), "jpeg") ||
 		strstr(filename.c_str(), "jpg") ||
-		strstr(filename.c_str(), "png")
-		)
+		strstr(filename.c_str(), "png") )
 
 		m_type = IMAGE;
 	else if (strstr(filename.c_str(), "avi"))
@@ -399,7 +431,7 @@ int cvImp::open(std::string filename)
 		__STD_PRINT("%s\n", "unknown media formate.");
 		exit(0);
 	}
-	allocateImage(m_srcWidth, m_srcHeight, 3, GL_BGR,GL_UNSIGNED_BYTE);
+	allocateImage(m_srcWidth, m_srcHeight, 3, GL_BGR, GL_UNSIGNED_BYTE);
 	setInternalTextureFormat(GL_BGR);
 	return 1;
 }
@@ -410,11 +442,17 @@ void cvImp::setTargetTime(ULONGLONG targetTime)
 }
 int cvImp::nextFrame()
 {
+	if (m_frameIndex >= m_srcFrameCnts)
+	{
+		m_videoDevice.open(m_filename);
+		m_frameIndex = 0;
+	}
 	if (m_type == VIDEO)
 		m_videoDevice >> m_frame;
-	else if (m_frameIndex==0)
+	else if (m_frameIndex == 0)
 		m_videoDevice >> m_frame;
 	m_frameIndex++;
+
 	return 1;
 }
 void cvImp::syncStart()
@@ -447,6 +485,11 @@ int cvImp::getFrameIndex()
 {
 	return m_frameIndex;
 }
+
+int cvImp::getTotalFrameCnts()
+{
+	return m_srcFrameCnts;
+}
 void cvImp::bindTexSrc(osg::Texture2D* texImg)
 {
 	//if (!m_image.valid())
@@ -455,24 +498,30 @@ void cvImp::bindTexSrc(osg::Texture2D* texImg)
 	//	exit(0);
 	//}
 	m_dstWidth = texImg->getTextureWidth();
+#if 0
 	if (m_dstWidth != m_srcWidth)
 	{
 		__STD_PRINT("%s\n", "Image width not match.");
 		exit(0);
 	}
+#endif
 	m_dstHeight = texImg->getTextureHeight();
+#if 0
 	if (m_dstHeight != m_srcHeight)
 	{
 		__STD_PRINT("%s\n", "Image height not match.");
 		exit(0);
 	}
+#endif
 	//We set the format of the texure to "RGBA" by default.
 	m_dstChannels = 4;
+#if 0
 	if (m_dstChannels != m_srcChannels)
 	{
 		__STD_PRINT("%s\n", "Image channel not match.");
 		exit(0);
 	}
+#endif
 	texImg->setImage(this);
 
 }
@@ -480,12 +529,12 @@ void cvImp::updateTex()
 {
 	BYTE* dst = data();
 	BYTE* src = m_frame.data;
-	assert(src.data= NULL);
+	assert(src.data = NULL);
 
 	int step = m_frame.channels()*m_srcWidth;
 
 	for (int i = 0; i < m_frame.rows; i++)
-		memcpy(dst + i*step, m_frame.ptr(m_srcHeight-1-i), step);
+		memcpy(dst + i*step, m_frame.ptr(m_srcHeight - 1 - i), step);
 	//memcpy(dst, src, getImageSizeInBytes());
 
 }
@@ -493,6 +542,7 @@ void cvImp::Start()
 {
 	__STD_PRINT("%s\n", "opencv video capture:start.\tNot implemented.");
 }
+
 
 void cvImp::Pause()
 {
@@ -510,7 +560,7 @@ void cvImp::Stop()
 */
 void cvImp::imageDirty()
 {
-	if (m_type==VIDEO)
+	if (m_type == VIDEO)
 		dirty();
 }
 

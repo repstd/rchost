@@ -25,11 +25,6 @@ int main(int argc, char* argv[])
 	HOST_OPERATOR::instance()->loadConfig("control.ini");
 	std::unique_ptr<HOST> host(new HOST(port));
 	host->start();
-
-	//std::unique_ptr<HOST> host2(new HOST(20715));
-	//host2->start();
-
-	//host2->join();
 	host->join();
 	host.release();
 	return 0;

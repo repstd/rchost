@@ -10,6 +10,15 @@ RCPLAYER_API::RCPLAYER_API()
 }
 
 
+void RCPLAYER_API::release()
+{
+	if (m_vlc)
+		libvlc_release(m_vlc);
+	if (m_vlcMedia)
+		libvlc_media_release(m_vlcMedia);
+	if (m_vlcPlayer)
+		libvlc_media_player_release(m_vlcPlayer);
+}
 RCPLAYER_API::~RCPLAYER_API()
 {
 
@@ -205,10 +214,20 @@ int RCPLAYER::initPlayer(const char* const* vlc_argv, const int argc)
 int RCPLAYER::open(const char* filename)
 {
 
+	FILE* tryOpen = fopen(filename,"r");
+	if (tryOpen == NULL)
+	{
+		__STD_PRINT("%s\n", "Failed to Open File.Exit.");
+		exit(0);
+	}
+	else
+	{
+		fclose(tryOpen);
+	}
 	m_vlcMedia = libvlc_media_new_path(m_vlc, filename);
 	if (!m_vlcMedia)
 	{
-		__STD_PRINT("%s\n", "Failed to Open File.Exit.");
+		__STD_PRINT("%s\n", "Failed to Init Media.Exit.");
 		exit(0);
 	}
 

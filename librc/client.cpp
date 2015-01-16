@@ -52,7 +52,6 @@ int client::initSocket(int port, ULONG S_addr)
 		__STD_PRINT("Error Creating Socket.ErrorCode:%d\n ", GetLastError());
 	}
 	assert(m_socket >= 0);
-
 	m_addrSvr.sin_family = AF_INET;
 	m_addrSvr.sin_port = htons((short)m_port);
 #ifdef TCP_CONN
@@ -80,6 +79,7 @@ int client::initForPort(int port, const char* serverAddr)
 {
 
 	if (serverAddr == NULL)
+
 		//return initSocket(port, inet_addr("225.225.225.225"));
 		return initSocket(port, htonl(INADDR_BROADCAST));
 	else

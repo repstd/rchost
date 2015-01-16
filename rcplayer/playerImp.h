@@ -78,7 +78,6 @@ public:
 	{
 		m_isSleep = status;
 	}
-
 	virtual void play();
 	virtual void pause();
 	virtual void stop();
@@ -121,7 +120,7 @@ public:
 	void syncStart();
 	int getFrameIndex();
 	void setTargetTime(ULONGLONG targetTime);
-
+	int getTotalFrameCnts();
 	virtual	void bindTexSrc(osg::Texture2D* texImg);
 	virtual	void bindTexSrc(BYTE* buf) { return; }
 	virtual	void updateTex();
@@ -140,7 +139,7 @@ private:
 	int m_srcWidth, m_srcHeight, m_srcChannels;
 	int m_dstWidth, m_dstHeight, m_dstChannels;
 	DATA_FORMT m_type;
-
+	std::string m_filename;
 	cv::Mat  m_frame;
 	cv::VideoCapture m_videoDevice;
 	int m_srcFrameCnts;

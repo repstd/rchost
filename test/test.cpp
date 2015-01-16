@@ -15,6 +15,7 @@
 void pipeSignal()
 {
 
+
 	std::unique_ptr<client> nextFrameCtrl=std::unique_ptr<client>(new client(_RC_PIPE_BROADCAST_PORT,NULL) );
 	while (1)
 	{
@@ -30,6 +31,29 @@ void pipeSignal()
 	}
 }
 
+class MultiListener:public THREAD
+{
+
+public:
+	MultiListener(const int port) :
+		THREAD()
+	{
+
+	}
+	virtual void run()
+	{
+		char msgRcv[_MAX_DATA_SIZE];
+		int size = -1;
+		std::string strMsg;
+	}
+	virtual int cancel()
+	{
+
+	}
+
+	std::vector<client> m_vecListener;
+	client* m_sender;
+};
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//cv::VideoCapture video;

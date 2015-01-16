@@ -223,14 +223,14 @@ int main(int argc, char** argv)
 	__LOG_INIT(_PLAYER_LOG);
 	
 	std::string keyStoneCorrFile("D:\\cow.osgt");
-	if (argc <= 1)
+	if (argc < 1)
 	{
 		file = std::string("Data\\1.avi");
 		//return 0;
 	}
 	else
 	{
-
+		__STD_PRINT("Arg[0]: %s\n", argv[0]);
 		file = std::string(argv[0]);
 		int flag;
 		char *p = NULL;
@@ -289,17 +289,26 @@ int main(int argc, char** argv)
 	}
 	__STD_PRINT("width: %d ", width);
 	__STD_PRINT("height: %d\n", height);
+	__STD_PRINT("filename: %s\n", file.c_str());
 #ifdef _VLC_IMPLEMENTATION
 	playerImp* imp = impFactory::instance()->createRCVLCImp();
 	vlcImp* vlc = (vlcImp*)imp;
 	vlc->initPlayer(vlc_args, realArgc);
 	vlc->open(file, false, width, height);
+
+#ifdef _TIME_SYNC
 	vlc->setTargetTime(targetStartTime);
+#endif
+
 	rcviewer* viewer= new rcviewer(vlc);
 #else
 	cvImp* opencvImp = (cvImp*)impFactory::instance()->createOpenCVImp();
-	opencvImp->open(file);
+	opencvImp->open(argv[0]);
+
+#ifdef _TIME_SYNC
 	opencvImp->setTargetTime(targetStartTime);
+#endif
+
 	rcviewer* viewer= new rcviewer(opencvImp);
 #endif
 	//Here we use OpenCV Implementation
