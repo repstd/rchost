@@ -26,7 +26,7 @@
 	FILE* logfout = fopen(filename, "w"); \
 	fclose(logfout); \
 }
-#define _PRINT(fmt,data) std::printf(fmt,data);
+#define _PRINT(fmt,data,...) std::printf(fmt,data);
 
 #define __STD_PRINT(fmt,data,...) _PRINT(fmt,data)  
 //#define __DEBUG_PRINT(fmt,data,...) __STD_PRINT(fmt,data)
@@ -41,6 +41,7 @@
 #define _STD_PRINT_TIME_PLAIN(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define _RC_PIPE_NAME "\\\\.\\pipe\\rcpipe" 
 #define _RC_PIPE_BROADCAST_PORT 8000
+
 enum EVENT
 {
 	_OPEN,
@@ -63,6 +64,7 @@ struct _MSG
 		if (strcmp(_filename, other._filename) == 0)
 			return true;
 		//TODO: Add more restrictions	
+				
 		return false;
 	}
 	char _operation;
@@ -74,6 +76,21 @@ struct _MSG
 	FILETIME _time;
 	char _pBuf[_MSG_BUF_SIZE];
 	int  _pSize[_MSG_ARGC];
+};
+
+struct cmp
+{
+
+	bool operator()(const std::string a, const std::string b)
+	{
+
+
+		if (strcmp(a.c_str(), b.c_str()))
+			return true;
+		else
+			return false;
+	}
+
 };
 
 class HOST_CONFIG_API

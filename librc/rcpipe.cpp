@@ -12,8 +12,7 @@ rcpipe::~rcpipe()
 }
 
 
-namedpipeServer::namedpipeServer(const char* pipeName):
-NAMEDPIPE_API(pipeName)
+namedpipeServer::namedpipeServer(const char* pipeName): NAMEDPIPE_API(pipeName)
 {
 
 	m_hPipe = createPipe(pipeName);

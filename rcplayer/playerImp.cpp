@@ -13,19 +13,12 @@ void saveBMP(int width, int height, int channel, BYTE* data, char* filename, int
 	m_bmpWirter->writeImage(*img, filename);
 }
 
-
-vlcImp::vlcImp() :
-osg::ImageStream(),
-RCPLAYER_API(),
-playerImp()
+vlcImp::vlcImp() :osg::ImageStream(), RCPLAYER_API(), playerImp()
 {
 	init();
 }
 
-vlcImp::vlcImp(const vlcImp& copy, const osg::CopyOp& op) :
-RCPLAYER_API(),
-osg::ImageStream(copy, op),
-playerImp()
+vlcImp::vlcImp(const vlcImp& copy, const osg::CopyOp& op) : RCPLAYER_API(), osg::ImageStream(copy, op), playerImp()
 {
 	init();
 	m_vlc = copy.m_vlc;
@@ -420,15 +413,13 @@ int cvImp::open(std::string filename)
 	if (strstr(filename.c_str(), "bmp") ||
 		strstr(filename.c_str(), "jpeg") ||
 		strstr(filename.c_str(), "jpg") ||
-		strstr(filename.c_str(), "png") )
-
+		strstr(filename.c_str(), "png"))
 		m_type = IMAGE;
 	else if (strstr(filename.c_str(), "avi"))
-
 		m_type = VIDEO;
 	else
 	{
-		__STD_PRINT("%s\n", "unknown media formate.");
+		__STD_PRINT("%s\n", "unknown media format.");
 		exit(0);
 	}
 	allocateImage(m_srcWidth, m_srcHeight, 3, GL_BGR, GL_UNSIGNED_BYTE);
@@ -442,17 +433,21 @@ void cvImp::setTargetTime(ULONGLONG targetTime)
 }
 int cvImp::nextFrame()
 {
+	//Loop
 	if (m_frameIndex >= m_srcFrameCnts)
 	{
 		m_videoDevice.open(m_filename);
 		m_frameIndex = 0;
 	}
+	/*
+	*Only update video and keep the images the same.
+	*/
 	if (m_type == VIDEO)
 		m_videoDevice >> m_frame;
 	else if (m_frameIndex == 0)
 		m_videoDevice >> m_frame;
-	m_frameIndex++;
 
+	m_frameIndex++;
 	return 1;
 }
 void cvImp::syncStart()
@@ -513,7 +508,9 @@ void cvImp::bindTexSrc(osg::Texture2D* texImg)
 		exit(0);
 	}
 #endif
-	//We set the format of the texure to "RGBA" by default.
+	/*
+	*We set the format of the texture to "RGBA" by default.
+	*/
 	m_dstChannels = 4;
 #if 0
 	if (m_dstChannels != m_srcChannels)
@@ -532,7 +529,6 @@ void cvImp::updateTex()
 	assert(src.data = NULL);
 
 	int step = m_frame.channels()*m_srcWidth;
-
 	for (int i = 0; i < m_frame.rows; i++)
 		memcpy(dst + i*step, m_frame.ptr(m_srcHeight - 1 - i), step);
 	//memcpy(dst, src, getImageSizeInBytes());

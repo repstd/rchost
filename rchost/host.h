@@ -28,138 +28,46 @@ typedef std::map<std::string, std::string>::iterator HOST_MAP_ITER;
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;
 typedef std::map < std::string, std::shared_ptr<namedpipeServer>> HOST_PIPE;
 typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST_PIPE_ITER;
-struct cmp
-{
-
-	bool operator()(const std::string a, const std::string b)
-	{
-
-
-		if (strcmp(a.c_str(), b.c_str()))
-			return true;
-		else
-			return false;
-	}
-
-};
-class PIPESIGNAL_BROCASTER :protected client, public THREAD
+static std::map<const std::string, bool, cmp> g_mapIpFlag;
+//Start a brocaster to signal the child process in the slave host
+class PipeSignalBrocaster :protected client, public THREAD
 {
 
 public:
-	PIPESIGNAL_BROCASTER(const int port) :
-		client(port, NULL),
-		THREAD()
-	{
-		loadIP("ip.ini");
-		__STD_PRINT("%s\n", "ip list loaded");
-	}
+	PipeSignalBrocaster(const int port);
 	DWORD loadIP(const char* confg);
-	virtual void run()
-	{
-		char msgRcv[_MAX_DATA_SIZE];
-		int size = -1;
-		std::string strMsg;
-		while (isSocketOpen())
-		{
-			char* msg = "pipe";
-			struct sockaddr from;
-			sendPacket(msg, strlen(msg));
-#if 0
-			__STD_PRINT("%s\n", "message Sent");
-#endif
-			while (1)
-			{
-#if 0
-				__STD_PRINT("%s\n", "waiting...");
-#endif
-				getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
-				strMsg.assign(msgRcv);
-				m_mapIpFlag[strMsg.c_str()] = true;
-				int allReceived = 1;
-				for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-				{
-					if (!iter->second)
-					{
-						allReceived = 0;
-						_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
-						break;
-					}
-				}
-				if (allReceived == 1)
-				{
-					for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-					{
-						iter->second = false;
-					}
-#if 0
-					__STD_PRINT("%s\n", "All Reveived.");
-#endif
-					break;
-				}
-			}
-		}
-	}
-	virtual int cancel()
-	{
-		return THREAD::cancel();
-	}
-
+	virtual void run();
+	virtual int cancel();
+private:
 	std::map<const std::string, bool, cmp> m_mapIpFlag;
 };
-class multiListener;
-static std::map<const std::string, bool, cmp> m_mapIpFlag;
-class listenerSlave :
-	public client, public THREAD, rcmutex
+//A single thread which would reuse the soceket for collecting slave feedback.
+class listenerSlave : public client, public THREAD, rcmutex
 {
 public:
-	listenerSlave(SOCKET socket) :THREAD(), client(), rcmutex()
-	{
-		m_socket = socket;
-		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
-	}
+	listenerSlave(SOCKET socket);
 	virtual void run();
-
-	multiListener* m_host;
 };
+
+//A thread which would handle the feedback information from the salves and send signals back to them regularly.
 class multiListener :protected client, public THREAD, public rcmutex
 {
-
 public:
-	multiListener(const int port) :
-		client(port, NULL),
-		THREAD(),
-		rcmutex()
-	{
-		loadIP("ip.ini");
-		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
-		__STD_PRINT("%s\n", "ip list loaded");
-	}
-	~multiListener()
-	{
-		for (std::vector<std::shared_ptr<listenerSlave>>::iterator iter = m_vecSlaves.begin(); iter != m_vecSlaves.end(); iter++)
-		{
-			(*iter)->setCancelModeAsynchronous();
-			(*iter)->cancel();
-		}
-	}
+	multiListener(const int port);
+	~multiListener();
 	DWORD loadIP(const char* confg);
-	
 	virtual void run();
-	
-	virtual int cancel()
-	{
-		return THREAD::cancel();
-	}
-
+	virtual int cancel();
+private:
 	std::vector<std::shared_ptr<listenerSlave>> m_vecSlaves;
 };
 //Abstract of a class for finishing the tasks assigned to the host.
-class HOST_OPERATOR_API :public HOST_CONFIG_API, public rcmutex
+class HostOperatorAPI :public HOST_CONFIG_API, public rcmutex
 {
 
 public:
-	HOST_OPERATOR_API();
-	~HOST_OPERATOR_API();
+	HostOperatorAPI();
+	~HostOperatorAPI();
 	virtual DWORD handleProgram(std::string filename, const char op) = 0;
 	virtual DWORD handleProgram(std::string filename, const char op, bool isCurDirNeeded);
 protected:
@@ -171,21 +79,17 @@ protected:
 	virtual char* parsePath(const char* fullpath);
 	DWORD createProgram(std::string filename, bool isCurDirNeeded);
 	DWORD closeProgram(std::string filename);
-
 	std::map<std::string, std::string> m_mapNamePath;
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, std::string> m_mapNameAdditionInfo;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
 
 };
-
 //Concrete class for host_operator.
-class HOST_OPERATOR
-	:public HOST_OPERATOR_API
+class HostOperator :public HostOperatorAPI
 {
 public:
-	static HOST_OPERATOR* instance();
-
+	static HostOperator* instance();
 	virtual DWORD loadConfig(const char* filename);
 	virtual DWORD handleProgram(std::string filename, const char op);
 	//We can use this to add timestamp and something else to the child process.
@@ -198,17 +102,15 @@ public:
 	const hostent* getHostent();
 	void setPort(int port);
 	const int getPort();
-
 	DWORD loadIP(const char* confg);
-
 protected:
-	HOST_OPERATOR()
-		:HOST_OPERATOR_API()
+	HostOperator()
+		:HostOperatorAPI()
 	{
 		m_bIsDataLoaded = false;
 
 	}
-	~HOST_OPERATOR()
+	~HostOperator()
 	{
 		delete[] m_inst;
 		__STD_PRINT("%s\n", "host removed.");
@@ -222,18 +124,17 @@ private:
 	int m_port;
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
-	//std::auto_ptr<PIPESIGNAL_BROCASTER> m_pipeBrocaster;
+	//std::auto_ptr<PipeSignalBrocaster> m_pipeBrocaster;
 	std::vector < std::auto_ptr<multiListener>> m_vecPipebroadercaster;
-	static HOST_OPERATOR* m_inst;
+	static HostOperator* m_inst;
 
 };
-
 //For each host thread,we need a handler to finish message handling routines.
-class HOST_MSGHANDLER :public THREAD, public rcmutex
+class HostMsgHandler :public THREAD, public rcmutex
 {
 
 public:
-	HOST_MSGHANDLER(const HOST_MSG* msg);
+	HostMsgHandler(const HOST_MSG* msg);
 
 	virtual void handle() const;
 	virtual void run();
@@ -246,58 +147,19 @@ protected:
 	std::auto_ptr<HOST_MSG> m_taskMsg;
 
 };
-
-//For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
-
-class PIPESERVER :public THREAD
+//Concrete host implementation.
+class host :protected server, public THREAD, rcmutex
 {
 public:
-
-	PIPESERVER(const char* pipename)
-	{
-
-		m_pipeServer = std::unique_ptr<namedpipeServer>(new namedpipeServer(pipename));
-	}
-	virtual void run()
-	{
-		char log[512];
-		SYSTEMTIME systime;
-		GetLocalTime(&systime);
-		_STD_ENCODE_TIMESTAMP(log, systime);
-		_LOG_FORMAT_HOST("%s", log);
-		while (1)
-		{
-			m_pipeServer->signalClient();
-			memset(log, 0, 512);
-			GetLocalTime(&systime);
-			_STD_ENCODE_TIMESTAMP(log, systime);
-			strcat(log, "#");
-			strcat(log, m_pipeServer->getPipeName());
-			_LOG_FORMAT_HOST("%s\n", log);
-		}
-		__STD_PRINT("%s\n", "pipe exit");
-	}
-	virtual void cancle()
-	{
-		m_pipeServer->disconnect();
-		m_pipeServer->closeHandle();
-		THREAD::cancel();
-	}
-	std::unique_ptr<namedpipeServer> m_pipeServer;
-};
-
-class HOST :protected server, public THREAD, rcmutex
-{
-public:
-	HOST(const int port);
-	~HOST()
+	host(const int port);
+	~host()
 	{
 
 	}
 	virtual void run();
 	void addPipeServer(const char* pipename);
 	void signalPipeClient();
-	void queryHostInfo(HOST_OPERATOR* ope);
+	void queryHostInfo(HostOperator* ope);
 	const char* getName() const;
 	const hostent* getHostent() const;
 	const char* getIP() const;
@@ -306,40 +168,25 @@ private:
 	std::map < std::string, std::shared_ptr<namedpipeServer>> m_mapNamedPipeServer;
 	int m_port;
 };
-class PIPESIGNAL_HANDLER :protected server, public THREAD
+
+class PipeServer :public THREAD
 {
 public:
-	PIPESIGNAL_HANDLER(HOST* host, const int port) :
-		server(port),
-		THREAD()
-	{
-		m_host = std::unique_ptr<HOST>(host);
-	}
-	virtual void run()
-	{
-		char msgRcv[MAX_PATH];
-		sockaddr client;
-		int szRcv = -1;
-		const char* received = HOST_OPERATOR::instance()->getHostName();
-		while (isSocketOpen())
-		{
-			szRcv = -1;
-			getPacket(client, msgRcv, szRcv, MAX_PATH);
-			if (szRcv != -1)
-			{
-				char* msgStr = (char*)msgRcv;
-				if (strstr(msgStr, "pipe") != NULL)
-				{
-					//__STD_PRINT("tring to %s\n", "SignalPipeClient");
-					m_host->signalPipeClient();
-				}
-				sendPacket(client, const_cast<char*>(received), strlen(received) + 1, _MAX_DATA_SIZE);
-			}
-
-		}
-
-	}
+	PipeServer(const char* pipename);
+	virtual void run();
+	virtual void cancle();
 private:
-	std::unique_ptr<HOST> m_host;
+	std::unique_ptr<namedpipeServer> m_pipeServer;
 };
+
+//For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
+class PipeSignalHandler :protected server, public THREAD
+{
+public:
+	PipeSignalHandler(host* phost, const int port);
+	virtual void run();
+private:
+	std::unique_ptr<host> m_host;
+};
+
 #endif

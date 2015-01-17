@@ -3,31 +3,33 @@
 #include "rc_common.h"
 #include <assert.h>
 
-//void writeArgs(_MSG* msg, const char* arg)
-//{
-//		
-//		char* temp = const_cast<char*>(arg);
-//		int curSize = strlen(temp)+1;
-//		assert(msg->_pBuf+_size+ curSize != NULL);
-//		memcpy(msg->_pBuf +msg->_size, temp, curSize*sizeof(char));
-//		msg->_size += curSize;
-//		msg->_vecSize.push_back(msg->_size);
-//	
-//}
-//void readArgs(_MSG* msg, int i,char* arg)
-//{
-//		assert(i <msg-> _vecSize.size());
-//		int curSize = msg->_vecSize[i + 1] - msg->_vecSize[i];
-//		assert(arg + curSize != NULL);
-//		memcpy(arg, msg->_pBuf + msg->_vecSize[i], msg->_vecSize[i + 1] -msg->_vecSize[i]);
-//	
-//}
-//void clear(_MSG* msg)
-//{
-//	memset(msg->_pBuf,0,msg->_size);
-//	msg->_vecSize.clear();
-//	msg->_size = 0;
-//}
+#if 0
+void writeArgs(_MSG* msg, const char* arg)
+{
+
+	char* temp = const_cast<char*>(arg);
+	int curSize = strlen(temp)+1;
+	assert(msg->_pBuf+_size+ curSize != NULL);
+	memcpy(msg->_pBuf +msg->_size, temp, curSize*sizeof(char));
+	msg->_size += curSize;
+	msg->_vecSize.push_back(msg->_size);
+
+}
+void readArgs(_MSG* msg, int i,char* arg)
+{
+	assert(i <msg-> _vecSize.size());
+	int curSize = msg->_vecSize[i + 1] - msg->_vecSize[i];
+	assert(arg + curSize != NULL);
+	memcpy(arg, msg->_pBuf + msg->_vecSize[i], msg->_vecSize[i + 1] -msg->_vecSize[i]);
+
+}
+void clear(_MSG* msg)
+{
+	memset(msg->_pBuf,0,msg->_size);
+	msg->_vecSize.clear();
+	msg->_size = 0;
+}
+#endif
 
 void writeArgs(_MSG* msg, const char* arg)
 {

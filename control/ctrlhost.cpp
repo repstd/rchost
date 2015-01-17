@@ -1,12 +1,12 @@
 #include "StdAfx.h"
 #include "ctrlhost.h"
 
-CTRLHOST_OPERATOR* CTRLHOST_OPERATOR::instance()
+CTRLhost_OPERATOR* CTRLhost_OPERATOR::instance()
 {
-	static CTRLHOST_OPERATOR host;
+	static CTRLhost_OPERATOR host;
 	return &host;
 }
-DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
+DWORD CTRLhost_OPERATOR::loadConfig(const char* confg)
 {
 	lock();
 	char strINIPATH[MAX_PATH];
@@ -42,7 +42,7 @@ DWORD CTRLHOST_OPERATOR::loadConfig(const char* confg)
 
 
 
-DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
+DWORD CTRLhost_OPERATOR::updateConfig(const char* confg)
 {
 	lock();
 	char strINIPATH[MAX_PATH];
@@ -55,7 +55,7 @@ DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
 	CHAR attrStr[MAX_PATH];
 	long hr;
 	__DEBUG_PRINT("number of clients found: %d\n", m_mapNameIP.size())
-	for (CRTHOST_MAP_ITER iter = m_mapNameIP.begin(); iter != m_mapNameIP.end(); iter++)
+	for (CRThost_MAP_ITER iter = m_mapNameIP.begin(); iter != m_mapNameIP.end(); iter++)
 	{
 		__DEBUG_PRINT("trying finding app: %s\n", iter->first.c_str());
 		hr = GetPrivateProfileSection(iter->first.c_str(), attrStr, MAX_PATH,strINIPATH);
@@ -78,10 +78,10 @@ DWORD CTRLHOST_OPERATOR::updateConfig(const char* confg)
 	unlock();
 	return ERROR_SUCCESS;
 }
-void CTRLHOST_OPERATOR::addClientIP(const char* name,const char* ip)
+void CTRLhost_OPERATOR::addClientIP(const char* name,const char* ip)
 {
 	lock();
-	CRTHOST_MAP_ITER iter = m_mapNameIP.find(name);
+	CRThost_MAP_ITER iter = m_mapNameIP.find(name);
 	if (iter == m_mapNameIP.end())
 		m_mapNameIP[name] = ip;
 	unlock();

@@ -20,14 +20,8 @@ public:
 	virtual void Start() = 0;
 	virtual void Pause() = 0;
 	virtual void Stop() = 0;
-	virtual void imageDirty()
-	{
-		return;
-	}
-	virtual void setName(const char* name)
-	{
-		m_nameImp = name;
-	}
+	virtual void imageDirty() { return; }
+	virtual void setName(const char* name) { m_nameImp = name; }
 private:
 	std::string m_nameImp;
 };
@@ -43,10 +37,7 @@ public:
 protected:
 	vlcImp();
 
-	~vlcImp()
-	{
-
-	}
+	~vlcImp() { }
 public:
 	//API for playerImp
 	virtual int nextFrame();
@@ -70,14 +61,8 @@ public:
 	void setTargetTime(ULONGLONG targetTime);
 	void syncStart();
 	void updateTexture();
-	static void sleep()
-	{
-		Sleep(1);
-	}
-	void setSleep(int status)
-	{
-		m_isSleep = status;
-	}
+	static void sleep() { Sleep(1); }
+	void setSleep(int status) { m_isSleep = status; }
 	virtual void play();
 	virtual void pause();
 	virtual void stop();
@@ -115,7 +100,7 @@ public:
 	}
 	META_Object(osg, cvImp)
 
-		int open(std::string filename);
+	int open(std::string filename);
 	int nextFrame();
 	void syncStart();
 	int getFrameIndex();
@@ -129,12 +114,10 @@ public:
 	virtual	void Stop();
 	virtual void imageDirty();
 protected:
-	cvImp() :
-		playerImp(),
-		osg::ImageStream()
+	cvImp() : playerImp(), osg::ImageStream()
 	{
-			m_frameIndex = 0;
-		}
+		m_frameIndex = 0;
+	}
 private:
 	int m_srcWidth, m_srcHeight, m_srcChannels;
 	int m_dstWidth, m_dstHeight, m_dstChannels;
@@ -146,6 +129,7 @@ private:
 	int m_frameIndex;
 	ULONGLONG m_targetTime;
 };
+
 class impFactory
 {
 public:
@@ -154,7 +138,7 @@ public:
 		static impFactory factoryInst;
 		return &factoryInst;
 	}
-	playerImp* createRCVLCImp()
+	playerImp* createVLCImp()
 	{
 		vlcImp* imp = new vlcImp();
 
@@ -175,5 +159,4 @@ protected:
 	{
 
 	}
-
 };

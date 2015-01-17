@@ -1,32 +1,270 @@
 #include "stdafx.h"
-#include "host.h"
 #include <iostream>
 #include <string>
 #include <atlstr.h> 
 #include <sstream>
 #include <iterator>
 #include <vector>
-#include "rc_common.h"
 #include <string>
+#include "host.h"
+#include "rc_common.h"
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
 }
+PipeSignalBrocaster::PipeSignalBrocaster(const int port) : client(port, NULL), THREAD()
+{
 
-HOST_OPERATOR_API::HOST_OPERATOR_API() :
-HOST_CONFIG_API(),
-rcmutex()
+	loadIP("ip.ini");
+	__STD_PRINT("%s\n", "ip list loaded");
+}
+DWORD PipeSignalBrocaster::loadIP(const char* confg)
+{
+	char strINIPATH[MAX_PATH];
+	_fullpath(strINIPATH, confg, MAX_PATH);
+	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
+	{
+		FILE* fp = fopen(confg, "w");
+		fclose(fp);
+		return ERROR_NOT_FOUND;
+	}
+
+	CHAR attrStr[MAX_PATH];
+	long hr;
+	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
+	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
+	{
+		return ERROR_NOT_FOUND;
+	}
+	CHAR* psection = lpReturnedSections;
+	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
+	std::string app;
+	while (*psection != 0x00)
+	{
+		__STD_PRINT("%s\n", psection);
+		app = std::string(psection);
+		psection += app.size() + 1;
+		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		m_mapIpFlag[app.c_str()] = false;
+		memset(attrStr, 0, MAX_PATH);
+	}
+	return ERROR_SUCCESS;
+
+}
+void PipeSignalBrocaster::run()
+{
+
+	char msgRcv[_MAX_DATA_SIZE];
+	int size = -1;
+	std::string strMsg;
+	while (isSocketOpen())
+	{
+		char* msg = "pipe";
+		struct sockaddr from;
+		sendPacket(msg, strlen(msg));
+#if 0
+		__STD_PRINT("%s\n", "message Sent");
+#endif
+		while (1)
+		{
+#if 0
+			__STD_PRINT("%s\n", "waiting...");
+#endif
+			getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
+			strMsg.assign(msgRcv);
+			m_mapIpFlag[strMsg.c_str()] = true;
+			int allReceived = 1;
+			for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+			{
+				if (!iter->second)
+				{
+					allReceived = 0;
+					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
+					break;
+				}
+			}
+			if (allReceived == 1)
+			{
+				for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+				{
+					iter->second = false;
+				}
+#if 0
+				__STD_PRINT("%s\n", "All Reveived.");
+#endif
+				break;
+			}
+		}
+	}
+
+}
+int PipeSignalBrocaster::cancel()
+{
+	return THREAD::cancel();
+}
+listenerSlave::listenerSlave(SOCKET socket) :THREAD(), client(), rcmutex()
+{
+	m_socket = socket;
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+}
+void listenerSlave::run()
+{
+	char msgRcv[_MAX_DATA_SIZE];
+	int size = -1;
+	sockaddr in;
+	std::string strMsg;
+	std::map<const std::string, bool, cmp>::iterator iter;
+	while (isSocketOpen())
+	{
+		size = -1;
+		getPacket(in, msgRcv, size, _MAX_DATA_SIZE);
+		if (size != -1)
+		{
+			strMsg.assign(msgRcv);
+
+			iter = g_mapIpFlag.find(strMsg.c_str());
+			lock();
+			if (iter != g_mapIpFlag.end())
+				iter->second = true;
+			unlock();
+
+			__STD_PRINT("%d\t Fliped:\t", getThreadId());
+			__STD_PRINT("%s\n ", strMsg.c_str());
+		}
+	}
+}
+
+multiListener::multiListener(const int port) : client(port, NULL), THREAD(), rcmutex()
+{
+	loadIP("ip.ini");
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+	__STD_PRINT("%s\n", "ip list loaded");
+}
+
+multiListener ::~multiListener()
+{
+	for (std::vector<std::shared_ptr<listenerSlave>>::iterator iter = m_vecSlaves.begin(); iter != m_vecSlaves.end(); iter++)
+	{
+		(*iter)->setCancelModeAsynchronous();
+		(*iter)->cancel();
+	}
+}
+DWORD multiListener::loadIP(const char* confg)
+{
+
+	char strINIPATH[MAX_PATH];
+	_fullpath(strINIPATH, confg, MAX_PATH);
+	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
+	{
+		FILE* fp = fopen(confg, "w");
+		fclose(fp);
+		return ERROR_NOT_FOUND;
+	}
+
+	CHAR attrStr[MAX_PATH];
+	long hr;
+	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
+	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
+	{
+		return ERROR_NOT_FOUND;
+	}
+	CHAR* psection = lpReturnedSections;
+	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
+	std::string app;
+	while (*psection != 0x00)
+	{
+		__STD_PRINT("%s\n", psection);
+		app = std::string(psection);
+		psection += app.size() + 1;
+		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		g_mapIpFlag[app.c_str()] = false;
+		memset(attrStr, 0, MAX_PATH);
+	}
+	return ERROR_SUCCESS;
+}
+void multiListener::run()
+{
+	int first = 1;
+	Sleep(5000);
+	int cnt = 0;
+	SYSTEMTIME time;
+	while (isSocketOpen())
+	{
+
+		GetLocalTime(&time);
+		sendPacket((char*)(&(time)), sizeof(SYSTEMTIME));
+		struct sockaddr from;
+		if (first)
+		{
+			first = 0;
+
+			for (int i = 0; i < 24; i++)
+			{
+				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
+				slave->Init();
+				slave->start();
+				m_vecSlaves.push_back(slave);
+			}
+		}
+		Sleep(10);
+		cnt = 0;
+		while (1)
+		{
+			cnt += 1;
+			int allReceived = 1;
+			int torlerance = 0;
+			for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
+			{
+				if (!iter->second)
+				{
+					allReceived = 0;
+					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
+					torlerance += 1;
+				}
+			}
+			if (torlerance < 2)
+				allReceived = 1;
+			if (cnt>300)
+			{
+				__STD_PRINT("%s\n", "Expired.");
+				allReceived = 1;
+			}
+			//for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
+			//{
+			//	__STD_PRINT("%s  ", iter->first.c_str());
+			//	__STD_PRINT("%d \n", iter->second);
+			//}
+			if (allReceived == 1)
+			{
+				lock();
+				for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
+				{
+					iter->second = false;
+				}
+				unlock();
+				__STD_PRINT("%s\n", "All received.");
+				__STD_PRINT("%s\n", "*******************************");
+				break;
+			}
+		}
+	}
+}
+
+int multiListener::cancel()
+{
+	return THREAD::cancel();
+}
+HostOperatorAPI::HostOperatorAPI() : HOST_CONFIG_API(), rcmutex()
 {
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	return;
 }
 
-
-HOST_OPERATOR_API::~HOST_OPERATOR_API()
+HostOperatorAPI::~HostOperatorAPI()
 {
 }
 
-DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool isCurDirNeeded)
+DWORD HostOperatorAPI::handleProgram(std::string filename, const char op, bool isCurDirNeeded)
 {
 	switch (op)
 	{
@@ -40,7 +278,7 @@ DWORD HOST_OPERATOR_API::handleProgram(std::string filename, const char op, bool
 
 }
 
-std::string HOST_OPERATOR_API::getPath(std::string filename)
+std::string HostOperatorAPI::getPath(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
 	if (iter == m_mapNamePath.end())
@@ -48,7 +286,7 @@ std::string HOST_OPERATOR_API::getPath(std::string filename)
 	else
 		return iter->second;
 }
-std::string HOST_OPERATOR_API::getArg(std::string filename)
+std::string HostOperatorAPI::getArg(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
 	if (iter == m_mapNameArgs.end())
@@ -57,7 +295,7 @@ std::string HOST_OPERATOR_API::getArg(std::string filename)
 		return iter->second;
 
 }
-std::string HOST_OPERATOR_API::getArg(std::string filename, std::string additional)
+std::string HostOperatorAPI::getArg(std::string filename, std::string additional)
 {
 
 	std::string originalArg = getArg(filename).c_str();
@@ -77,7 +315,7 @@ std::string HOST_OPERATOR_API::getArg(std::string filename, std::string addition
 	}
 	return buf;
 }
-DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc)
+DWORD HostOperatorAPI::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc)
 
 {
 	lock();
@@ -173,7 +411,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, std::string path, c
 	unlock();
 	return ERROR_SUCCESS;
 }
-DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded)
+DWORD HostOperatorAPI::createProgram(std::string filename, bool isCurDirNeeded)
 {
 
 	std::string strPath = getPath(filename);
@@ -206,7 +444,7 @@ DWORD HOST_OPERATOR_API::createProgram(std::string filename, bool isCurDirNeeded
 	return createProgram(filename, strPath, curDir, args, 1);
 
 }
-DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
+DWORD HostOperatorAPI::closeProgram(std::string filename)
 {
 	lock();
 	HOST_INFO_ITER iter;
@@ -245,7 +483,7 @@ DWORD HOST_OPERATOR_API::closeProgram(std::string filename)
 
 }
 
-char* HOST_OPERATOR_API::parsePath(const char* fullpath)
+char* HostOperatorAPI::parsePath(const char* fullpath)
 {
 
 	//Parse the full path of the program to be created.
@@ -266,13 +504,10 @@ char* HOST_OPERATOR_API::parsePath(const char* fullpath)
 
 }
 
-HOST_OPERATOR* HOST_OPERATOR::m_inst = new HOST_OPERATOR;
-HOST_OPERATOR* HOST_OPERATOR::instance()
-{
+HostOperator* HostOperator::m_inst = new HostOperator;
+HostOperator* HostOperator::instance() { return m_inst; }
 
-	return m_inst;
-}
-DWORD HOST_OPERATOR::loadConfig(const char* config)
+DWORD HostOperator::loadConfig(const char* config)
 {
 	char strINIPath[MAX_PATH];
 	_fullpath(strINIPath, config, MAX_PATH);
@@ -329,21 +564,21 @@ DWORD HOST_OPERATOR::loadConfig(const char* config)
 	return 0;
 }
 
-void HOST_OPERATOR::saveHostName(const char* hostname)
+void HostOperator::saveHostName(const char* hostname)
 {
 	if (hostname != NULL)
 		strcpy(m_hostname, hostname);
 }
-const char* HOST_OPERATOR::getHostName()
+const char* HostOperator::getHostName()
 {
 	return m_hostname;
 }
-void HOST_OPERATOR::saveAdapter(const char* addr)
+void HostOperator::saveAdapter(const char* addr)
 {
 	if (addr != NULL)
 		m_vecAdapter.push_back(addr);
 }
-const char* HOST_OPERATOR::getPrimaryAdapter()
+const char* HostOperator::getPrimaryAdapter()
 {
 	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
 	{
@@ -354,26 +589,26 @@ const char* HOST_OPERATOR::getPrimaryAdapter()
 	}
 	return m_vecAdapter[0].c_str();
 }
-void HOST_OPERATOR::saveHostent(const hostent* host)
+void HostOperator::saveHostent(const hostent* host)
 {
 	if (host != NULL)
 		m_host = std::unique_ptr<hostent>(const_cast<hostent*>(host));
 }
-const hostent* HOST_OPERATOR::getHostent()
+const hostent* HostOperator::getHostent()
 {
 	return m_host.get();
 }
 
-void HOST_OPERATOR::setPort(int port)
+void HostOperator::setPort(int port)
 {
 	m_port = port;
 }
-const int HOST_OPERATOR::getPort()
+const int HostOperator::getPort()
 {
 	return m_port;
 }
 
-void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
+void HostOperator::updateArg(std::string filename, std::string additional)
 {
 
 	lock();
@@ -393,40 +628,7 @@ void HOST_OPERATOR::updateArg(std::string filename, std::string additional)
 	unlock();
 }
 
-DWORD PIPESIGNAL_BROCASTER::loadIP(const char* confg)
-{
-	char strINIPATH[MAX_PATH];
-	_fullpath(strINIPATH, confg, MAX_PATH);
-	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
-	{
-		FILE* fp = fopen(confg, "w");
-		fclose(fp);
-		return ERROR_NOT_FOUND;
-	}
-
-	CHAR attrStr[MAX_PATH];
-	long hr;
-	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
-	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
-	{
-		return ERROR_NOT_FOUND;
-	}
-	CHAR* psection = lpReturnedSections;
-	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
-	std::string app;
-	while (*psection != 0x00)
-	{
-		__STD_PRINT("%s\n", psection);
-		app = std::string(psection);
-		psection += app.size() + 1;
-		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
-		m_mapIpFlag[app.c_str()] = false;
-		memset(attrStr, 0, MAX_PATH);
-	}
-	return ERROR_SUCCESS;
-
-}
-DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
+DWORD HostOperator::handleProgram(std::string filename, const char op)
 {
 	/*
 	*Handle miscellaneous conditions for any possible programs here.
@@ -451,7 +653,7 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 
 	}
 
-	HOST_OPERATOR_API::handleProgram(filename, op, isCurDirNeeded);
+	HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
 
 	if (iter != m_mapNameAdditionInfo.end())
 	{
@@ -469,9 +671,7 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 				{
 
 					__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
-					/*
-					*Start a brocaster for signalling the  vlc player to  step frame by frame
-					*/
+					//Start a brocaster for signalling the  vlc player to  step frame by frame
 					m_vecPipebroadercaster[0]->start();
 				}
 				break;
@@ -485,6 +685,8 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 				m_vecPipebroadercaster[0].release();
 				m_vecPipebroadercaster.pop_back();
 				break;
+			default:
+				break;
 			}
 			//TODO:Specify operation for master prog.
 		}
@@ -492,7 +694,7 @@ DWORD HOST_OPERATOR::handleProgram(std::string filename, const char op)
 	return ERROR_SUCCESS;
 }
 
-HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
+HostMsgHandler::HostMsgHandler(const HOST_MSG* msg) :THREAD(), rcmutex()
 {
 	//use a normal mutex instead of a recursive one.
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
@@ -500,25 +702,25 @@ HOST_MSGHANDLER::HOST_MSGHANDLER(const HOST_MSG* msg) :THREAD(), rcmutex()
 	//Assign the server a msg to handle
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-void HOST_MSGHANDLER::setMSG(HOST_MSG* msg)
+void HostMsgHandler::setMSG(HOST_MSG* msg)
 {
 
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
 }
-const HOST_MSG* HOST_MSGHANDLER::getMSG()
+const HOST_MSG* HostMsgHandler::getMSG()
 {
 	return m_taskMsg.get();
 }
-void HOST_MSGHANDLER::handle() const
+void HostMsgHandler::handle() const
 {
 
-//#ifdef _TIME_SYNC
-//	syncTime();
-//#endif
-	HOST_OPERATOR::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
+	//#ifdef _TIME_SYNC
+	//	syncTime();
+	//#endif
+	HostOperator::instance()->handleProgram(m_taskMsg->_filename, m_taskMsg->_operation);
 
 }
-void HOST_MSGHANDLER::run()
+void HostMsgHandler::run()
 {
 	lock();
 
@@ -527,7 +729,7 @@ void HOST_MSGHANDLER::run()
 	unlock();
 }
 
-void HOST_MSGHANDLER::syncTime() const
+void HostMsgHandler::syncTime() const
 {
 
 	FILETIME masterFileTime = m_taskMsg->_time;
@@ -559,10 +761,10 @@ void HOST_MSGHANDLER::syncTime() const
 
 		_LOG_FORMAT_HOST("%s\n", timestamp);
 
-		HOST_OPERATOR::instance()->updateArg(m_taskMsg->_filename, timestamp);
+		HostOperator::instance()->updateArg(m_taskMsg->_filename, timestamp);
 	}
 #else
-	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000.0;
+	ULONGLONG sleepTime = (master.QuadPart - slave.QuadPart) / 10000;
 
 	if (sleepTime < 0)
 		sleepTime = 0;
@@ -570,32 +772,31 @@ void HOST_MSGHANDLER::syncTime() const
 		sleepTime = 30 * 1000.0;
 	Sleep(sleepTime);
 	GetLocalTime(&curSysTime);
-
 	__STD_PRINT("#%d: ", 2); _STD_PRINT_TIME(curSysTime);
 #endif
 }
 
 
-HOST::HOST(const int port) :server(port), THREAD(), rcmutex()
+host::host(const int port) :server(port), THREAD(), rcmutex()
 {
 
 	m_port = port;
 
-	queryHostInfo(HOST_OPERATOR::instance());
+	queryHostInfo(HostOperator::instance());
 }
-const char* HOST::getName() const
+const char* host::getName() const
 {
-	return HOST_OPERATOR::instance()->getHostName();
+	return HostOperator::instance()->getHostName();
 }
-const hostent* HOST::getHostent() const
+const hostent* host::getHostent() const
 {
-	return HOST_OPERATOR::instance()->getHostent();
+	return HostOperator::instance()->getHostent();
 }
-const char* HOST::getIP() const
+const char* host::getIP() const
 {
-	return HOST_OPERATOR::instance()->getPrimaryAdapter();
+	return HostOperator::instance()->getPrimaryAdapter();
 }
-void HOST::queryHostInfo(HOST_OPERATOR* ope)
+void host::queryHostInfo(HostOperator* ope)
 {
 
 	if (ope->getHostent() != NULL)
@@ -639,7 +840,7 @@ void HOST::queryHostInfo(HOST_OPERATOR* ope)
 	}
 
 }
-void HOST::run()
+void host::run()
 {
 	char msgRcv[_MAX_DATA_SIZE];
 	sockaddr client;
@@ -649,10 +850,10 @@ void HOST::run()
 
 	addPipeServer(_RC_PIPE_NAME);
 	/*
-	*Start a udp server to listening  a specified port for signaling the child processes.
+	*Start a udp server to listen  a specified port for signaling the child processes.
 	*/
 #ifdef _PIPE_SYNC
-	std::unique_ptr<PIPESIGNAL_HANDLER> pipesignal_handler(new PIPESIGNAL_HANDLER(this, _RC_PIPE_BROADCAST_PORT));
+	std::unique_ptr<PipeSignalHandler> pipesignal_handler(new PipeSignalHandler(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
 #endif
 	while (isSocketOpen())
@@ -664,13 +865,10 @@ void HOST::run()
 			/*
 			*Start a thread to finish the program openning/closing task.
 			*/
-			std::unique_ptr<HOST_MSGHANDLER> slave(new HOST_MSGHANDLER(reinterpret_cast<HOST_MSG*>(msgRcv)));
+			std::unique_ptr<HostMsgHandler> slave(new HostMsgHandler(reinterpret_cast<HOST_MSG*>(msgRcv)));
 			slave->Init();
 			slave->start();
 			slave.release();
-			//slave->join();
-			//slave->Init();
-			//slave->handle();
 		}
 		/*
 		*Send feedback to the central controller.
@@ -681,11 +879,11 @@ void HOST::run()
 		sendPacket(client, feedback, strlen(feedback), 64);
 	}
 }
-void HOST::addPipeServer(const char* pipename)
+void host::addPipeServer(const char* pipename)
 {
 	m_mapNamedPipeServer[pipename] = std::shared_ptr<namedpipeServer>(new namedpipeServer(pipename));
 }
-void HOST::signalPipeClient()
+void host::signalPipeClient()
 {
 
 	for (HOST_PIPE_ITER iter = m_mapNamedPipeServer.begin(); iter != m_mapNamedPipeServer.end(); iter++)
@@ -693,145 +891,69 @@ void HOST::signalPipeClient()
 #ifdef _PIPE_SYNC
 		iter->second->signalClient();
 #else
-		//__STD_PRINT("%s\n", "next_frame");
+		__STD_PRINT("%s\n", "next_frame");
 #endif
 	}
 }
-HOST_PIPE HOST::getPipeServers()
+HOST_PIPE host::getPipeServers()
 {
 	return m_mapNamedPipeServer;
 }
-
-
-void listenerSlave::run()
+PipeServer::PipeServer(const char* pipename) :THREAD()
 {
-	char msgRcv[_MAX_DATA_SIZE];
-	int size = -1;
-	sockaddr in;
-	std::string strMsg;
-	std::map<const std::string, bool, cmp>::iterator iter;
+	m_pipeServer = std::unique_ptr<namedpipeServer>(new namedpipeServer(pipename));
+}
+void PipeServer::run()
+{
+
+	char log[512];
+	SYSTEMTIME systime;
+	GetLocalTime(&systime);
+	_STD_ENCODE_TIMESTAMP(log, systime);
+	_LOG_FORMAT_HOST("%s", log);
+	while (1)
+	{
+		m_pipeServer->signalClient();
+		memset(log, 0, 512);
+		GetLocalTime(&systime);
+		_STD_ENCODE_TIMESTAMP(log, systime);
+		strcat(log, "#");
+		strcat(log, m_pipeServer->getPipeName());
+		_LOG_FORMAT_HOST("%s\n", log);
+	}
+	__STD_PRINT("%s\n", "pipe exit");
+}
+void PipeServer::cancle()
+{
+	m_pipeServer->disconnect();
+	m_pipeServer->closeHandle();
+	THREAD::cancel();
+}
+PipeSignalHandler::PipeSignalHandler(host* phost, const int port) : server(port), THREAD()
+{
+	m_host = std::unique_ptr<host>(phost);
+}
+void PipeSignalHandler::run()
+{
+
+	char msgRcv[MAX_PATH];
+	sockaddr client;
+	int szRcv = -1;
+	const char* received = HostOperator::instance()->getHostName();
 	while (isSocketOpen())
 	{
-		size = -1;
-		getPacket(in, msgRcv, size, _MAX_DATA_SIZE);
-		if (size != -1)
+		szRcv = -1;
+		getPacket(client, msgRcv, szRcv, MAX_PATH);
+		if (szRcv != -1)
 		{
-			strMsg.assign(msgRcv);
-
-			iter = m_mapIpFlag.find(strMsg.c_str());
-			lock();
-			if (iter != m_mapIpFlag.end())
-				iter->second = true;
-			unlock();
-			__STD_PRINT("%d\t Fliped:\t", getThreadId());
-			__STD_PRINT("%s\n ", strMsg.c_str());
+			char* msgStr = (char*)msgRcv;
+			if (strstr(msgStr, "pipe") != NULL)
+			{
+				m_host->signalPipeClient();
+			}
+			sendPacket(client, const_cast<char*>(received), strlen(received) + 1, _MAX_DATA_SIZE);
 		}
-	}
-}
 
-DWORD multiListener::loadIP(const char* confg)
-{
-
-	char strINIPATH[MAX_PATH];
-	_fullpath(strINIPATH, confg, MAX_PATH);
-	if (GetFileAttributes(strINIPATH) == 0xFFFFFFFF)
-	{
-		FILE* fp = fopen(confg, "w");
-		fclose(fp);
-		return ERROR_NOT_FOUND;
 	}
 
-	CHAR attrStr[MAX_PATH];
-	long hr;
-	LPTSTR lpReturnedSections = new TCHAR[MAX_PATH];
-	if (!GetPrivateProfileSectionNames(lpReturnedSections, MAX_PATH, strINIPATH))
-	{
-		return ERROR_NOT_FOUND;
-	}
-	CHAR* psection = lpReturnedSections;
-	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
-	std::string app;
-	while (*psection != 0x00)
-	{
-		__STD_PRINT("%s\n", psection);
-		app = std::string(psection);
-		psection += app.size() + 1;
-		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
-		m_mapIpFlag[app.c_str()] = false;
-		memset(attrStr, 0, MAX_PATH);
-	}
-	return ERROR_SUCCESS;
-
-
-}
-void multiListener::run()
-{
-	char msgRcv[_MAX_DATA_SIZE];
-	int size = -1;
-	std::string strMsg;
-	int first = 1;
-	Sleep(5000);
-	int cnt = 0;
-	int frameToPlay = 200;
-	SYSTEMTIME time;
-	while (isSocketOpen())
-	{
-		
-		GetLocalTime(&time);
-		sendPacket((char*)(&(time)), sizeof(SYSTEMTIME));
-		struct sockaddr from;
-		if (first)
-		{
-			first = 0;
-
-			for (int i = 0; i < 24; i++)
-			{
-				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
-				slave->Init();
-				slave->start();
-				m_vecSlaves.push_back(slave);
-			}
-		}
-		Sleep(10);
-		cnt = 0;
-		while (1)
-		{
-			cnt += 1;
-			int allReceived = 1;
-			int torlerance = 0;
-			for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-			{
-				if (!iter->second)
-				{
-					allReceived = 0;
-					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
-					torlerance +=1;
-				}
-			}
-			if (torlerance < 2)
-				allReceived = 1;
-			if (cnt>300)
-			{
-				__STD_PRINT("%s\n", "Expired.");
-				allReceived = 1;
-			}
-			//for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-			//{
-			//	__STD_PRINT("%s  ", iter->first.c_str());
-			//	__STD_PRINT("%d \n", iter->second);
-			//}
-			if (allReceived == 1)
-			{
-				lock();
-				for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-				{
-					iter->second = false;
-				}
-				unlock();
-				__STD_PRINT("%s\n", "All received.");
-				__STD_PRINT("%s\n", "*******************************");
-				break;
-			}
-		}
-	}
 }

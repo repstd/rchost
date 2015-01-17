@@ -18,7 +18,7 @@ rcviewer::rcviewer(impFactory* factory, char* nameImp) :
 osgViewer::Viewer()
 {
 	if (strstr(nameImp, "VLC"))
-		m_pPlayerImplementation = factory->createRCVLCImp();
+		m_pPlayerImplementation = factory->createVLCImp();
 }
 
 rcviewer::~rcviewer()
@@ -59,9 +59,6 @@ void rcviewer::setupViewer(int width, int height, const char* keyStoneFilename)
 	{
 
 	}
-	/*
-	*Add Event Handler
-	*/
 	addEventHandler(new osgViewer::WindowSizeHandler);
 	osg::setNotifyHandler(new errorHandler);
 #ifdef _PIPE_SYNC
@@ -79,7 +76,7 @@ playerImp* rcviewer::getImp()
 }
 int rcviewer::handleOpenCV()
 {
-	cvImp* imp = (cvImp*)getImp();
+	cvImp* imp =dynamic_cast <cvImp*>(getImp());
 #ifdef _TIME_SYNC
 	imp->syncStart();
 #endif
@@ -126,7 +123,7 @@ int rcviewer::handleOpenCV()
 
 int rcviewer::handleVLC()
 {
-	vlcImp* image = (vlcImp*)getImp();
+	vlcImp* image = dynamic_cast<vlcImp*>(getImp());
 
 #ifdef _TIME_SYNC
 	image->syncStart();

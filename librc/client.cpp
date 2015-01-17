@@ -2,11 +2,11 @@
 #include "client.h"
 #include  <iostream>
 #include <assert.h>
-client::client():
+client::client() :
 rcsocket()
 {
 }
-client::client(int port,const char* serverAddr):
+client::client(int port, const char* serverAddr) :
 rcsocket()
 {
 	initForPort(port, serverAddr);
@@ -36,7 +36,7 @@ int client::setSocketNonBlock(int flag)
 }
 int client::initSocket(int port, ULONG S_addr)
 {
-	
+
 	m_port = port;
 #ifdef TCP_CONN
 	m_socket =socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -58,7 +58,7 @@ int client::initSocket(int port, ULONG S_addr)
 	assert(serverAddr!=NULL);
 #else
 
-	if (S_addr== htonl(INADDR_BROADCAST))
+	if (S_addr == htonl(INADDR_BROADCAST))
 		setsockopt(m_socket, SOL_SOCKET, SO_BROADCAST, (const char *)&on, sizeof(int));
 	m_addrSvr.sin_addr.S_un.S_addr = S_addr;
 #endif
@@ -90,7 +90,7 @@ int client::initForPort(int port, const char* serverAddr)
 void client::sendPacket(char* data, int size)
 {
 
-	rcsocket::sendPacket(*(sockaddr*)&m_addrSvr, data, size,_MAX_DATA_SIZE);
+	rcsocket::sendPacket(*(sockaddr*)&m_addrSvr, data, size, _MAX_DATA_SIZE);
 }
 
 

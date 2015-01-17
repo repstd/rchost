@@ -14,28 +14,28 @@ public:
 		return strcmp(x.c_str(), y.c_str());
 	}
 };
-typedef std::map<std::string, std::string,StringComparerForMap> CRTLHOST_MAP;
-typedef std::map<std::string, std::string,StringComparerForMap>::iterator CRTHOST_MAP_ITER;
+typedef std::map<std::string, std::string,StringComparerForMap> CRTLhost_MAP;
+typedef std::map<std::string, std::string,StringComparerForMap>::iterator CRThost_MAP_ITER;
 
 
 
 
-class CTRLHOST_OPERATOR :public HOST_CONFIG_API, public rcmutex
+class CTRLhost_OPERATOR :public HOST_CONFIG_API, public rcmutex
 {
 
 public:
 
-	static CTRLHOST_OPERATOR* instance();
+	static CTRLhost_OPERATOR* instance();
 	void addClientIP(const char* name,const char* ip);
 	virtual DWORD loadConfig(const char* confg);
 	virtual DWORD updateConfig(const char* confg);
 	
 protected:
-	CTRLHOST_OPERATOR()
+	CTRLhost_OPERATOR()
 		:HOST_CONFIG_API(), rcmutex()
 	{
 		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	}
-	CRTLHOST_MAP m_mapNameIP;
+	CRTLhost_MAP m_mapNameIP;
 };
 

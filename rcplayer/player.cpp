@@ -142,19 +142,12 @@ RCPLAYER* RCPLAYER::instance()
 	return m_inst;
 }
 
-RCPLAYER::RCPLAYER() :
-osg::ImageStream(),
-THREAD(),
-rcmutex()
+RCPLAYER::RCPLAYER() : osg::ImageStream(), THREAD(), rcmutex()
 {
 	init();
 }
 
-RCPLAYER::RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op) :
-RCPLAYER_API(),
-osg::ImageStream(copy, op),
-THREAD(),
-rcmutex()
+RCPLAYER::RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op) : RCPLAYER_API(), osg::ImageStream(copy, op), THREAD(), rcmutex()
 {
 	init();
 	m_vlc = copy.m_vlc;

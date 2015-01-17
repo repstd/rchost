@@ -43,7 +43,7 @@
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(ProjectDir)vlc/include;$(SolutionDir)librc;$(OSG_ROOT_32)\include;$(OPENCV_ROOT)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)vlc/lib;$(SolutionDir)$(Configuration);$(OSG_ROOT_32)\lib\release;$(OPENCV_x86)\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>

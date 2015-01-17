@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
 	if (argc > 2)
 		port = atoi(argv[2]);
 
-	HOST_OPERATOR::instance()->loadConfig("control.ini");
-	std::unique_ptr<HOST> host(new HOST(port));
+	HostOperator::instance()->loadConfig("control.ini");
+	std::unique_ptr<host> host(new host(port));
 	host->start();
 	host->join();
 	host.release();

@@ -42,8 +42,7 @@ public:
 
 };
 
-class RCPLAYER :
-	public THREAD, public RCPLAYER_API, public osg::ImageStream, public rcmutex
+class RCPLAYER : public THREAD, public RCPLAYER_API, public osg::ImageStream, public rcmutex
 {
 public:
 	RCPLAYER(const RCPLAYER& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);

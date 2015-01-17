@@ -25,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj",
 		{AA46F707-B7E9-4C7A-9EC0-01BC94A409A5} = {AA46F707-B7E9-4C7A-9EC0-01BC94A409A5}
 	EndProjectSection
 EndProject
+Project("{6141683F-8A12-4E36-9623-2EB02B2C2303}") = "rchostInstaller", "rchostInstaller\rchostInstaller.isproj", "{91C98700-A7F0-48E4-991E-8FB887A1257C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		CD_ROM|Win32 = CD_ROM|Win32
@@ -84,6 +86,16 @@ Global
 		{6EB6BB82-EBCE-418D-884E-B0BF5BC04B3A}.Release|Win32.Build.0 = Release|Win32
 		{6EB6BB82-EBCE-418D-884E-B0BF5BC04B3A}.SingleImage|Win32.ActiveCfg = Release|Win32
 		{6EB6BB82-EBCE-418D-884E-B0BF5BC04B3A}.SingleImage|Win32.Build.0 = Release|Win32
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.CD_ROM|Win32.ActiveCfg = CD_ROM
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.CD_ROM|Win32.Build.0 = CD_ROM
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.Debug|Win32.ActiveCfg = DVD-5
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.Debug|Win32.Build.0 = DVD-5
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.DVD-5|Win32.ActiveCfg = DVD-5
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.DVD-5|Win32.Build.0 = DVD-5
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.Release|Win32.ActiveCfg = SingleImage
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.Release|Win32.Build.0 = SingleImage
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.SingleImage|Win32.ActiveCfg = SingleImage
+		{91C98700-A7F0-48E4-991E-8FB887A1257C}.SingleImage|Win32.Build.0 = SingleImage
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,10 +16,10 @@ static char* test_instruction[2] =
 	"image 0 0"
 };
 
-class HOST_LISTENER : public THREAD, rcmutex
+class host_LISTENER : public THREAD, rcmutex
 {
 public:
-	HOST_LISTENER::HOST_LISTENER(const client* cl)
+	host_LISTENER::host_LISTENER(const client* cl)
 		:THREAD(), rcmutex()
 	{
 		m_client = std::unique_ptr<client>(const_cast<client*>(cl));
@@ -46,9 +46,9 @@ public:
 				*delimeter = '\0';
 				__DEBUG_PRINT("%s\n", msgRcv);
 				__DEBUG_PRINT("%s\n", delimeter + 1);
-				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
+				CTRLhost_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
 			}
-			CTRLHOST_OPERATOR::instance()->updateConfig("clients.ini");
+			CTRLhost_OPERATOR::instance()->updateConfig("clients.ini");
 #endif
 			memset(msgRcv, 0, _MAX_DATA_SIZE);
 		}
@@ -58,10 +58,10 @@ public:
 	std::unique_ptr<client> m_client;
 };
 
-class HOSTLISTENER : public THREAD, rcmutex, client
+class hostLISTENER : public THREAD, rcmutex, client
 {
 public:
-	HOSTLISTENER::HOSTLISTENER(const SOCKET socket)
+	hostLISTENER::hostLISTENER(const SOCKET socket)
 		:THREAD(), rcmutex(), client(socket)
 	{
 		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
@@ -90,9 +90,9 @@ public:
 				*delimeter = '\0';
 				__DEBUG_PRINT("%s\n", msgRcv);
 				__DEBUG_PRINT("%s\n", delimeter + 1);
-				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
+				CTRLhost_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
 			}
-			CTRLHOST_OPERATOR::instance()->updateConfig("clients.ini");
+			CTRLhost_OPERATOR::instance()->updateConfig("clients.ini");
 
 			memset(msgRcv, 0, _MAX_DATA_SIZE);
 		}
@@ -132,16 +132,16 @@ public:
 				*delimeter = '\0';
 				__DEBUG_PRINT("%s\n", msgRcv);
 				__DEBUG_PRINT("%s\n", delimeter + 1);
-				CTRLHOST_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
+				CTRLhost_OPERATOR::instance()->addClientIP(msgRcv, delimeter + 1);
 			}
-			CTRLHOST_OPERATOR::instance()->updateConfig("clients.ini");
+			CTRLhost_OPERATOR::instance()->updateConfig("clients.ini");
 
 			memset(msgRcv, 0, _MAX_DATA_SIZE);
 		}
 
 	}
 };
-typedef std::vector<std::unique_ptr<HOSTLISTENER>> LISTENER_THREAD_POOL;
+typedef std::vector<std::unique_ptr<hostLISTENER>> LISTENER_THREAD_POOL;
 
 int main(int argc, char *argv[])
 {
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 	else
 		return 0;
 
-	CTRLHOST_OPERATOR::instance()->loadConfig("clients.ini");
+	CTRLhost_OPERATOR::instance()->loadConfig("clients.ini");
 	_MSG* msg = new _MSG;
 	msg->_operation = _OPEN;
 
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	LISTENER_THREAD_POOL vecListenerClientPool;
 	for (int i = 0; i < 24; i++)
 	{
-		vecListenerClientPool.push_back(std::unique_ptr<HOSTLISTENER>(new HOSTLISTENER(rc->getSocket())));
+		vecListenerClientPool.push_back(std::unique_ptr<hostLISTENER>(new hostLISTENER(rc->getSocket())));
 	}
 #endif
 	while (++cnt < 10000000)
@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 			(*iter)->start();
 		}
 #else
-		static std::unique_ptr<HOST_LISTENER> listener(new HOST_LISTENER(rc.get()));
+		static std::unique_ptr<host_LISTENER> listener(new host_LISTENER(rc.get()));
 		listener->Init();
 		listener->start();
 #endif

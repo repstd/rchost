@@ -31,29 +31,6 @@ void pipeSignal()
 	}
 }
 
-class MultiListener:public THREAD
-{
-
-public:
-	MultiListener(const int port) :
-		THREAD()
-	{
-
-	}
-	virtual void run()
-	{
-		char msgRcv[_MAX_DATA_SIZE];
-		int size = -1;
-		std::string strMsg;
-	}
-	virtual int cancel()
-	{
-
-	}
-
-	std::vector<client> m_vecListener;
-	client* m_sender;
-};
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//cv::VideoCapture video;

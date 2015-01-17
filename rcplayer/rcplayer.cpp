@@ -291,7 +291,7 @@ int main(int argc, char** argv)
 	__STD_PRINT("height: %d\n", height);
 	__STD_PRINT("filename: %s\n", file.c_str());
 #ifdef _VLC_IMPLEMENTATION
-	playerImp* imp = impFactory::instance()->createRCVLCImp();
+	playerImp* imp = impFactory::instance()->createVLCImp();
 	vlcImp* vlc = (vlcImp*)imp;
 	vlc->initPlayer(vlc_args, realArgc);
 	vlc->open(file, false, width, height);
@@ -302,7 +302,7 @@ int main(int argc, char** argv)
 
 	rcviewer* viewer= new rcviewer(vlc);
 #else
-	cvImp* opencvImp = (cvImp*)impFactory::instance()->createOpenCVImp();
+	cvImp* opencvImp = dynamic_cast<cvImp*>(impFactory::instance()->createOpenCVImp());
 	opencvImp->open(argv[0]);
 
 #ifdef _TIME_SYNC
@@ -312,9 +312,7 @@ int main(int argc, char** argv)
 	rcviewer* viewer= new rcviewer(opencvImp);
 #endif
 	//Here we use OpenCV Implementation
-
 	viewer->setupViewer(width, height, keyStoneCorrFile.c_str());
 	viewer->run();
-
 	return 0;
 }
