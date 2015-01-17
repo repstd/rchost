@@ -4,7 +4,6 @@
 #include "rcpipe.h"
 #define RCPLAYER_MAX_ARGC 15
 
-#define _PLAYER_LOG "./player.log"
 class RCPLAYER_API
 {
 public:

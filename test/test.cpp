@@ -31,22 +31,9 @@ void pipeSignal()
 	}
 }
 
+
 int _tmain(int argc, _TCHAR* argv[])
 {
-	//cv::VideoCapture video;
-	//video.open("./img/0.avi");
-	//if (!video.isOpened())
-	//	return 0;
-	//cv::Mat frame;
-	//cv::Size size = cv::Size((int)video.get(CV_CAP_PROP_FRAME_WIDTH), (int)video.get(CV_CAP_PROP_FRAME_HEIGHT));
-	//cv::namedWindow("video", CV_WINDOW_AUTOSIZE);
-	//cvMoveWindow("video", size.width, size.height); //750, 2 (bernat =0)
-	//while (1)
-	//{
-	//	video >> frame;
-	//	cv::imshow("video", frame);
-	//	cv::waitKey(0);
-	//}
 	pipeSignal();
 	return 0;
 }

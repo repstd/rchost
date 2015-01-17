@@ -14,8 +14,7 @@ osgViewer::Viewer()
 	_PLAYER_LOG_INIT
 }
 
-rcviewer::rcviewer(impFactory* factory, char* nameImp) :
-osgViewer::Viewer()
+rcviewer::rcviewer(impFactory* factory, char* nameImp) : osgViewer::Viewer()
 {
 	if (strstr(nameImp, "VLC"))
 		m_pPlayerImplementation = factory->createVLCImp();

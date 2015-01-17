@@ -9,7 +9,6 @@ RCPLAYER_API::RCPLAYER_API()
 
 }
 
-
 void RCPLAYER_API::release()
 {
 	if (m_vlc)
@@ -253,7 +252,6 @@ void RCPLAYER::syncStart()
 		ULONGLONG sleepTime = (m_targetTime - slave.QuadPart) / 10000.0;
 
 		__STD_PRINT("Now sleep for %I64u ms\n", sleepTime);
-		__LOG_FORMAT(_PLAYER_LOG, "Now sleep for %I64u ms\n", sleepTime);
 		
 		if (sleepTime < 0)
 			sleepTime = 0;

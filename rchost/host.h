@@ -22,13 +22,16 @@
 #define HOST_LOG_FILENAME 
 #define _LOG_INIT_HOST
 #define _LOG_FORMAT_HOST(format,data,...) 
-
 #endif
+
 typedef std::map<std::string, std::string>::iterator HOST_MAP_ITER;
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;
 typedef std::map < std::string, std::shared_ptr<namedpipeServer>> HOST_PIPE;
 typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST_PIPE_ITER;
+
+//global variables
 static std::map<const std::string, bool, cmp> g_mapIpFlag;
+
 //Start a brocaster to signal the child process in the slave host
 class PipeSignalBrocaster :protected client, public THREAD
 {
