@@ -298,14 +298,14 @@ int main(int argc, char** argv)
 
 	rcviewer* viewer= new rcviewer(vlc);
 #else
-	cvImp* opencvImp = dynamic_cast<cvImp*>(impFactory::instance()->createOpenCVImp());
+	std::unique_ptr<cvImp> opencvImp(dynamic_cast<cvImp*>(impFactory::instance()->createOpenCVImp()));
 	opencvImp->open(file);
 
 #ifdef _TIME_SYNC
 	opencvImp->setTargetTime(targetStartTime);
 #endif
 
-	rcviewer* viewer= new rcviewer(opencvImp);
+	std::unique_ptr<rcviewer> viewer(new rcviewer(opencvImp.get()));
 #endif
 	//Here we use OpenCV Implementation
 	viewer->setupViewer(width, height, keyStoneCorrFile.c_str());

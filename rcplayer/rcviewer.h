@@ -6,8 +6,11 @@
 class rcviewer:public osgViewer::Viewer
 {
 public:
-	rcviewer(){ return; }
-	rcviewer(const rcviewer& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY)
+	rcviewer() :osgViewer::Viewer()
+	{ 
+		return; 
+	}
+	rcviewer(const rcviewer& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY):osgViewer::Viewer()
 	{
 		return;
 	}
@@ -35,7 +38,6 @@ private:
 #else
 	std::shared_ptr<server> sync_server;
 	std::string m_hostname;
-
 #endif
 };
 

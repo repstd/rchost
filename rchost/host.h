@@ -31,11 +31,9 @@ typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST
 
 //global variables
 static std::map<const std::string, bool, cmp> g_mapIpFlag;
-
 //Start a brocaster to signal the child process in the slave host
 class PipeSignalBrocaster :protected client, public THREAD
 {
-
 public:
 	PipeSignalBrocaster(const int port);
 	DWORD loadIP(const char* confg);

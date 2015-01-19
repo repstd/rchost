@@ -7,8 +7,8 @@
 #define _PLAYER_LOG_INIT __LOG_INIT(_PLAYER_LOG_FILENAME)
 #define _PLAYER_LOG(fmt,data) __LOG_FORMAT(_PLAYER_LOG_FILENAME,fmt,data)
 #define _PLAYER_LOG_TIME(time) __LOG__FORMAT_TIME(_PLAYER_LOG_FILENAME,time)
-rcviewer::rcviewer(playerImp* imp) :
-osgViewer::Viewer()
+
+rcviewer::rcviewer(playerImp* imp) : osgViewer::Viewer()
 {
 	m_pPlayerImplementation = imp;
 	_PLAYER_LOG_INIT
@@ -65,7 +65,7 @@ void rcviewer::setupViewer(int width, int height, const char* keyStoneFilename)
 #else
 	sync_server = std::shared_ptr<server>(new server(_RC_PIPE_BROADCAST_PORT));
 	char host_name[MAX_PATH];
-	gethostname(host_name,MAX_PATH);
+	gethostname(host_name, MAX_PATH);
 	m_hostname = host_name;
 #endif
 }
@@ -75,7 +75,7 @@ playerImp* rcviewer::getImp()
 }
 int rcviewer::handleOpenCV()
 {
-	cvImp* imp =dynamic_cast <cvImp*>(getImp());
+	cvImp* imp = dynamic_cast <cvImp*>(getImp());
 #ifdef _TIME_SYNC
 	imp->syncStart();
 #endif
@@ -88,35 +88,40 @@ int rcviewer::handleOpenCV()
 	const char* msg = m_hostname.c_str();
 	int size;
 	SYSTEMTIME time;
+	SYNC_MSG* syncMsgRcv;
 	char timeStamp[90];
-	while (!done()&&sync_server->isSocketOpen())
+	ULONGLONG totalPlayed = 0;
+	while (!done() && sync_server->isSocketOpen())
 #endif
 	{
 #ifndef _PIPE_SYNC
 		size = -1;
 		sync_server->getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
-		if (size == sizeof(SYSTEMTIME))
+		if (size == sizeof(SYNC_MSG))
 		{
 #endif
+
+			syncMsgRcv = reinterpret_cast<SYNC_MSG*>(msgRcv);
 			imp->nextFrame();
+			totalPlayed += 1;
+			imp->syncFrame(totalPlayed, syncMsgRcv->_index);
 			imp->updateTex();
 			frame();
 			imp->imageDirty();
 			_PLAYER_LOG("%d ", imp->getFrameIndex());
-
-			time = *((SYSTEMTIME*)(msgRcv));
+			time = syncMsgRcv->_timeStamp;
 			_STD_ENCODE_TIMESTAMP(timeStamp, time);
 			_PLAYER_LOG("%s ", timeStamp);
 			GetLocalTime(&time);
 			_STD_ENCODE_TIMESTAMP(timeStamp, time);
 			_PLAYER_LOG(" %s\n", timeStamp);
 #ifndef _PIPE_SYNC
+			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 		}
-		sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
-					
+
 #endif
 	}
-	
+
 	return 1;
 }
 
@@ -135,7 +140,7 @@ int rcviewer::handleVLC()
 	char msgRcv[_MAX_DATA_SIZE];
 	int size = -1;
 	const char* msg = m_hostname.c_str();
-	while (!done()&&sync_server->isSocketOpen())
+	while (!done() && sync_server->isSocketOpen())
 #endif
 	{
 #ifndef _PIPE_SYNC
@@ -151,8 +156,8 @@ int rcviewer::handleVLC()
 			image->dirty();
 			__STD_PRINT("%f\n", image->getPosition());
 #ifndef _PIPE_SYNC
+			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 		}
-		sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 #endif
 	}
 

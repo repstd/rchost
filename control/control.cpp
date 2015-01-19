@@ -79,7 +79,7 @@ public:
 			getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
 			//if (GetLastError() == WSAEWOULDBLOCK)
 			//	Sleep(10);
-			__STD_PRINT("%d ", getThreadId());
+			__STD_PRINT("ThreadID: %d\t", getThreadId());
 			if (sizeRcv != -1 && sizeRcv != sizeof(HOST_MSG))
 			{
 				__STD_PRINT("%s\n", msgRcv);

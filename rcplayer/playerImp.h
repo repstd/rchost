@@ -14,8 +14,9 @@ public:
 	playerImp(){ return; }
 	~playerImp(){ return; }
 	virtual int nextFrame() = 0;
-	virtual void bindTexSrc(osg::Texture2D* texImg) { return; }
-	virtual void bindTexSrc(BYTE* buf) { return; }
+	virtual void syncFrame(ULONGLONG& current, const LONGLONG target){ return; };
+	virtual void bindTexSrc(osg::Texture2D*) { return; }
+	virtual void bindTexSrc(BYTE*) { return; }
 	virtual void updateTex() = 0;
 	virtual void Start() = 0;
 	virtual void Pause() = 0;
@@ -27,17 +28,13 @@ private:
 };
 
 
-class vlcImp :
-	public RCPLAYER_API, public playerImp, public osg::ImageStream
+class vlcImp : public RCPLAYER_API, public playerImp, public osg::ImageStream
 {
 	friend class impFactory;
-public:
+protected:
 	vlcImp(const vlcImp& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
 	META_Object(osg, vlcImp)
-protected:
 	vlcImp();
-
-	~vlcImp() { }
 public:
 	//API for playerImp
 	virtual int nextFrame();
@@ -94,18 +91,14 @@ class cvImp :public playerImp, public osg::ImageStream
 		VIDEO
 	};
 public:
-	cvImp(const cvImp& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY)
-	{
-
-	}
-	META_Object(osg, cvImp)
 
 	int open(std::string filename);
-	int nextFrame();
 	void syncStart();
 	int getFrameIndex();
 	void setTargetTime(ULONGLONG targetTime);
 	int getTotalFrameCnts();
+	virtual int nextFrame();
+	virtual void syncFrame(ULONGLONG& current, const LONGLONG target);
 	virtual	void bindTexSrc(osg::Texture2D* texImg);
 	virtual	void bindTexSrc(BYTE* buf) { return; }
 	virtual	void updateTex();
@@ -114,6 +107,11 @@ public:
 	virtual	void Stop();
 	virtual void imageDirty();
 protected:
+	cvImp(const cvImp& copy, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY)
+	{
+
+	}
+	META_Object(osg, cvImp)
 	cvImp() : playerImp(), osg::ImageStream()
 	{
 		m_frameIndex = 0;
@@ -140,15 +138,14 @@ public:
 	}
 	playerImp* createVLCImp()
 	{
-		vlcImp* imp = new vlcImp();
 
-		return imp;
+		std::unique_ptr<vlcImp> imp(new vlcImp);
+		return imp.release();
 	}
 	playerImp* createOpenCVImp()
 	{
-		cvImp* imp = new cvImp();
-
-		return imp;
+		std::unique_ptr<cvImp> imp(new cvImp);
+		return imp.release();
 	}
 protected:
 	impFactory()

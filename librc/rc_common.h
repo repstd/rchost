@@ -26,7 +26,7 @@
 	FILE* logfout = fopen(filename, "w"); \
 	fclose(logfout); \
 }
-#define _PRINT(fmt,data,...) std::printf(fmt,data);
+#define _PRINT(fmt,data) std::printf(fmt,data);
 
 #define __STD_PRINT(fmt,data,...) _PRINT(fmt,data)  
 //#define __DEBUG_PRINT(fmt,data,...) __STD_PRINT(fmt,data)
@@ -78,6 +78,12 @@ struct _MSG
 	int  _pSize[_MSG_ARGC];
 };
 
+typedef struct _SYNC_MSG
+{
+	SYSTEMTIME _timeStamp;
+	ULONGLONG _index;
+	char _userData[32];
+} SYNC_MSG;
 struct cmp
 {
 

@@ -122,13 +122,12 @@ void listenerSlave::run()
 		{
 			strMsg.assign(msgRcv);
 
-			iter = g_mapIpFlag.find(strMsg.c_str());
 			lock();
+			iter = g_mapIpFlag.find(strMsg.c_str());
 			if (iter != g_mapIpFlag.end())
 				iter->second = true;
 			unlock();
-
-			__STD_PRINT("%d\t Fliped:\t", getThreadId());
+			__STD_PRINT("ThreadID: %d\t Fliped:\t", getThreadId());
 			__STD_PRINT("%s\n ", strMsg.c_str());
 		}
 	}
@@ -188,12 +187,21 @@ void multiListener::run()
 	Sleep(5000);
 	int cnt = 0;
 	SYSTEMTIME time;
+	std::unique_ptr<SYNC_MSG> syncMsg(new SYNC_MSG);
+	ULONGLONG indexFrame = 0;
+	struct sockaddr from;
+	int totalSlaveCnt = g_mapIpFlag.size();
+	int unrespondedSlaveCnt = 0;
+	int tolerance = 2;
+	int allReceived;
 	while (isSocketOpen())
 	{
 
 		GetLocalTime(&time);
-		sendPacket((char*)(&(time)), sizeof(SYSTEMTIME));
-		struct sockaddr from;
+		syncMsg->_timeStamp = time;
+		syncMsg->_index = ++indexFrame;
+		strcpy(syncMsg->_userData, "control#next_frame");
+		sendPacket((char*)(syncMsg.get()), sizeof(SYNC_MSG));
 		if (first)
 		{
 			first = 0;
@@ -210,30 +218,31 @@ void multiListener::run()
 		cnt = 0;
 		while (1)
 		{
+			//for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
+			//{
+			//	__STD_PRINT("%s  ", iter->first.c_str());
+			//	__STD_PRINT("%d \n", iter->second);
+			//}
 			cnt += 1;
-			int allReceived = 1;
-			int torlerance = 0;
+			allReceived = 1;
+			unrespondedSlaveCnt = 0;
 			for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
 			{
 				if (!iter->second)
 				{
 					allReceived = 0;
-					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
-					torlerance += 1;
+					unrespondedSlaveCnt += 1;
 				}
 			}
-			if (torlerance < 2)
+			if (unrespondedSlaveCnt == totalSlaveCnt)
+				continue;
+			if (unrespondedSlaveCnt< tolerance)
 				allReceived = 1;
-			if (cnt>300)
+			if (cnt>300 && !allReceived)
 			{
-				__STD_PRINT("%s\n", "Expired.");
 				allReceived = 1;
+				__DEBUG_PRINT("%s\n", "Expired.");
 			}
-			//for (std::map<const std::string, bool, cmp>::iterator iter = m_mapIpFlag.begin(); iter != m_mapIpFlag.end(); iter++)
-			//{
-			//	__STD_PRINT("%s  ", iter->first.c_str());
-			//	__STD_PRINT("%d \n", iter->second);
-			//}
 			if (allReceived == 1)
 			{
 				lock();
@@ -242,8 +251,8 @@ void multiListener::run()
 					iter->second = false;
 				}
 				unlock();
-				__STD_PRINT("%s\n", "All received.");
-				__STD_PRINT("%s\n", "*******************************");
+				__DEBUG_PRINT("%s\n", "All received.");
+				__DEBUG_PRINT("%s\n", "*******************************");
 				break;
 			}
 		}
@@ -356,7 +365,7 @@ DWORD HostOperatorAPI::createProgram(std::string filename, std::string path, con
 	//Add process access attributes.
 #if 0
 	PSECURITY_DESCRIPTOR pSD = NULL;
-	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR,SECURITY_DESCRIPTOR_MIN_LENGTH);
+	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
 
 	if (NULL == pSD)
 	{
@@ -659,7 +668,7 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 	{
 		if (strstr(iter->second.c_str(), "-m") != NULL)
 		{
-			__STD_PRINT("%s\n", "-m");
+			__DEBUG_PRINT("%s\n", "-m");
 			if (m_vecPipebroadercaster.empty())
 				m_vecPipebroadercaster.push_back(std::auto_ptr<multiListener>(new multiListener(_RC_PIPE_BROADCAST_PORT)));
 
@@ -678,7 +687,6 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 			case _CLOSE:
 				__STD_PRINT("%s\n", "Finish signaling the rcplayer");
 				//close the brocaster
-
 				m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
 				m_vecPipebroadercaster[0]->cancel();
 				m_vecPipebroadercaster[0]->cancelCleanup();

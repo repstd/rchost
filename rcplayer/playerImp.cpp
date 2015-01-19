@@ -228,7 +228,6 @@ void vlcImp::syncStart()
 		ULONGLONG sleepTime = (m_targetTime - slave.QuadPart) / 10000.0;
 
 		__STD_PRINT("Now sleep for %I64u ms\n", sleepTime);
-		__LOG_FORMAT(_PLAYER_LOG, "Now sleep for %I64u ms\n", sleepTime);
 
 		if (sleepTime < 0)
 			sleepTime = 0;
@@ -450,6 +449,31 @@ int cvImp::nextFrame()
 	m_frameIndex++;
 	return 1;
 }
+void cvImp::syncFrame(ULONGLONG& current, const LONGLONG target)
+{
+	int diff = target - current;
+	if (diff<0)
+	{
+		//ERROR
+		__STD_PRINT("%s\n", "cvImp:Unkonwn Exception.Stepped too much");
+		while (1)
+		{
+			continue;
+		}
+	}
+	else if (diff==0)
+		return;
+	else
+	{
+		__STD_PRINT("FrameSync:Jumped %d Frames\n", diff);
+		while (diff--)
+		{
+			nextFrame();
+			current += 1;
+		}
+	}
+		
+}
 void cvImp::syncStart()
 {
 
@@ -466,7 +490,6 @@ void cvImp::syncStart()
 		ULONGLONG sleepTime = (m_targetTime - slave.QuadPart) / 10000.0;
 
 		__STD_PRINT("Now sleep for %I64u ms\n", sleepTime);
-		__LOG_FORMAT(_PLAYER_LOG, "Now sleep for %I64u ms\n", sleepTime);
 
 		if (sleepTime < 0)
 			sleepTime = 0;
@@ -526,8 +549,7 @@ void cvImp::updateTex()
 {
 	BYTE* dst = data();
 	BYTE* src = m_frame.data;
-	assert(src.data = NULL);
-
+	assert(src!= NULL);
 	int step = m_frame.channels()*m_srcWidth;
 	for (int i = 0; i < m_frame.rows; i++)
 		memcpy(dst + i*step, m_frame.ptr(m_srcHeight - 1 - i), step);
