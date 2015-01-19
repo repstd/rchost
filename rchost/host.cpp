@@ -79,7 +79,6 @@ void PipeSignalBrocaster::run()
 				if (!iter->second)
 				{
 					allReceived = 0;
-					_LOG_FORMAT_HOST("IPLIST End :%s\n", iter->first.c_str());
 					break;
 				}
 			}
@@ -138,6 +137,10 @@ multiListener::multiListener(const int port) : client(port, NULL), THREAD(), rcm
 	loadIP("ip.ini");
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	__STD_PRINT("%s\n", "ip list loaded");
+	lock();
+	setStatus(_PLAY);
+	unlock();
+
 }
 
 multiListener ::~multiListener()
@@ -181,6 +184,24 @@ DWORD multiListener::loadIP(const char* confg)
 	}
 	return ERROR_SUCCESS;
 }
+
+bool multiListener::isPlaying()
+{
+	return m_status == _PLAY;
+}
+void multiListener::setStatus(int status)
+{
+	m_status = status;
+}
+void multiListener::play()
+{
+	lock();
+	if (m_status == _PLAY)
+		setStatus(_PAUSE);
+	else
+		setStatus(_PLAY);
+	unlock();
+}
 void multiListener::run()
 {
 	int first = 1;
@@ -196,6 +217,15 @@ void multiListener::run()
 	int allReceived;
 	while (isSocketOpen())
 	{
+
+		lock();
+		if (!isPlaying())
+		{
+			unlock();
+			continue;
+		}
+		else
+			unlock();
 
 		GetLocalTime(&time);
 		syncMsg->_timeStamp = time;
@@ -218,11 +248,6 @@ void multiListener::run()
 		cnt = 0;
 		while (1)
 		{
-			//for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
-			//{
-			//	__STD_PRINT("%s  ", iter->first.c_str());
-			//	__STD_PRINT("%d \n", iter->second);
-			//}
 			cnt += 1;
 			allReceived = 1;
 			unrespondedSlaveCnt = 0;
@@ -251,8 +276,7 @@ void multiListener::run()
 					iter->second = false;
 				}
 				unlock();
-				__DEBUG_PRINT("%s\n", "All received.");
-				__DEBUG_PRINT("%s\n", "*******************************");
+				__STD_PRINT("%s\n", "*******************************");
 				break;
 			}
 		}
@@ -669,31 +693,35 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 		if (strstr(iter->second.c_str(), "-m") != NULL)
 		{
 			__DEBUG_PRINT("%s\n", "-m");
-			if (m_vecPipebroadercaster.empty())
-				m_vecPipebroadercaster.push_back(std::auto_ptr<multiListener>(new multiListener(_RC_PIPE_BROADCAST_PORT)));
-
+			if (m_pipeBrocaster.get() == NULL)
+			{
+				std::unique_ptr<multiListener> temp(new multiListener(_RC_PIPE_BROADCAST_PORT));
+				m_pipeBrocaster = std::move(temp);
+				temp.release();
+			}
 			switch (op)
 			{
 			case _OPEN:
 
-				if (!m_vecPipebroadercaster[0]->isRunning())
+				if (!m_pipeBrocaster->isRunning())
 				{
-
 					__STD_PRINT("Start to signal the rcplayer for %d\n", _RC_PIPE_BROADCAST_PORT);
-					//Start a brocaster for signalling the  vlc player to  step frame by frame
-					m_vecPipebroadercaster[0]->start();
+					m_pipeBrocaster->start();
 				}
 				break;
 			case _CLOSE:
 				__STD_PRINT("%s\n", "Finish signaling the rcplayer");
-				//close the brocaster
-				m_vecPipebroadercaster[0]->setCancelModeAsynchronous();
-				m_vecPipebroadercaster[0]->cancel();
-				m_vecPipebroadercaster[0]->cancelCleanup();
-				m_vecPipebroadercaster[0].release();
-				m_vecPipebroadercaster.pop_back();
+				m_pipeBrocaster->setCancelModeAsynchronous();
+				m_pipeBrocaster->cancel();
+				m_pipeBrocaster->cancelCleanup();
+				m_pipeBrocaster.release();
+				break;
+			case _PLAY_PAUSE:
+				if (m_pipeBrocaster->isRunning())
+					m_pipeBrocaster->play();
 				break;
 			default:
+				
 				break;
 			}
 			//TODO:Specify operation for master prog.

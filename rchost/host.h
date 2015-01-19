@@ -53,19 +53,27 @@ public:
 //A thread which would handle the feedback information from the salves and send signals back to them regularly.
 class multiListener :protected client, public THREAD, public rcmutex
 {
+	enum BROADCASTER_STATUS
+	{
+		_PLAY,
+		_PAUSE
+	};
 public:
 	multiListener(const int port);
 	~multiListener();
 	DWORD loadIP(const char* confg);
 	virtual void run();
 	virtual int cancel();
+	bool isPlaying();
+	void setStatus(int status);
+	void play();
 private:
+	int m_status;
 	std::vector<std::shared_ptr<listenerSlave>> m_vecSlaves;
 };
 //Abstract of a class for finishing the tasks assigned to the host.
 class HostOperatorAPI :public HOST_CONFIG_API, public rcmutex
 {
-
 public:
 	HostOperatorAPI();
 	~HostOperatorAPI();
@@ -126,7 +134,7 @@ private:
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
 	//std::auto_ptr<PipeSignalBrocaster> m_pipeBrocaster;
-	std::vector < std::auto_ptr<multiListener>> m_vecPipebroadercaster;
+	std::unique_ptr<multiListener> m_pipeBrocaster;
 	static HostOperator* m_inst;
 
 };
@@ -136,12 +144,10 @@ class HostMsgHandler :public THREAD, public rcmutex
 
 public:
 	HostMsgHandler(const HOST_MSG* msg);
-
 	virtual void handle() const;
 	virtual void run();
 	const HOST_MSG* getMSG();
 	void setMSG(HOST_MSG* msg);
-
 protected:
 
 	void syncTime() const;

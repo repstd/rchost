@@ -33,11 +33,8 @@ public:
 private:
 	playerImp* m_pPlayerImplementation;
 	osg::Texture2D* m_tex;
-#ifdef _PIPE_SYNC	
 	std::shared_ptr<namedpipeClient> sync_pipe_client;
-#else
 	std::shared_ptr<server> sync_server;
 	std::string m_hostname;
-#endif
 };
 

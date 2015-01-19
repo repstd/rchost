@@ -11,7 +11,6 @@
 rcviewer::rcviewer(playerImp* imp) : osgViewer::Viewer()
 {
 	m_pPlayerImplementation = imp;
-	_PLAYER_LOG_INIT
 }
 
 rcviewer::rcviewer(impFactory* factory, char* nameImp) : osgViewer::Viewer()
@@ -60,14 +59,11 @@ void rcviewer::setupViewer(int width, int height, const char* keyStoneFilename)
 	}
 	addEventHandler(new osgViewer::WindowSizeHandler);
 	osg::setNotifyHandler(new errorHandler);
-#ifdef _PIPE_SYNC
 	sync_pipe_client = std::shared_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
-#else
 	sync_server = std::shared_ptr<server>(new server(_RC_PIPE_BROADCAST_PORT));
 	char host_name[MAX_PATH];
 	gethostname(host_name, MAX_PATH);
 	m_hostname = host_name;
-#endif
 }
 playerImp* rcviewer::getImp()
 {
@@ -75,14 +71,10 @@ playerImp* rcviewer::getImp()
 }
 int rcviewer::handleOpenCV()
 {
-	cvImp* imp = dynamic_cast <cvImp*>(getImp());
+	playerImp* imp = getImp();
 #ifdef _TIME_SYNC
 	imp->syncStart();
 #endif
-
-#ifdef _PIPE_SYNC
-	while (!done()&&sync_pipe_client->receive())
-#else
 	sockaddr from;
 	char msgRcv[_MAX_DATA_SIZE];
 	const char* msg = m_hostname.c_str();
@@ -92,15 +84,12 @@ int rcviewer::handleOpenCV()
 	char timeStamp[90];
 	ULONGLONG totalPlayed = 0;
 	while (!done() && sync_server->isSocketOpen())
-#endif
 	{
-#ifndef _PIPE_SYNC
 		size = -1;
 		sync_server->getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
 		if (size == sizeof(SYNC_MSG))
 		{
-#endif
-
+			advance();
 			syncMsgRcv = reinterpret_cast<SYNC_MSG*>(msgRcv);
 			imp->nextFrame();
 			totalPlayed += 1;
@@ -108,20 +97,10 @@ int rcviewer::handleOpenCV()
 			imp->updateTex();
 			frame();
 			imp->imageDirty();
-			_PLAYER_LOG("%d ", imp->getFrameIndex());
 			time = syncMsgRcv->_timeStamp;
-			_STD_ENCODE_TIMESTAMP(timeStamp, time);
-			_PLAYER_LOG("%s ", timeStamp);
-			GetLocalTime(&time);
-			_STD_ENCODE_TIMESTAMP(timeStamp, time);
-			_PLAYER_LOG(" %s\n", timeStamp);
-#ifndef _PIPE_SYNC
 			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 		}
-
-#endif
 	}
-
 	return 1;
 }
 

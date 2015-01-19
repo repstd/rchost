@@ -195,6 +195,8 @@ int main(int argc, char *argv[])
 			msg->_operation = _CLOSE;
 		else if (op == 1)
 			msg->_operation = _OPEN;
+		else if (op == 2)
+			msg->_operation = _PLAY_PAUSE;
 		else
 			break;
 		if (et < 0)
@@ -232,8 +234,10 @@ int main(int argc, char *argv[])
 
 		SystemTimeToFileTime(&systime, &filetime);
 		msg->_time = filetime;
+#if 0
 		if ((*pre) == (*msg))
 				continue;
+#endif
 		memcpy(pre, msg, sizeof(msg));
 		rc->sendPacket((char*)msg, sizeof(_MSG));
 		if (cnt > 1)

@@ -414,7 +414,11 @@ int cvImp::open(std::string filename)
 		strstr(filename.c_str(), "jpg") ||
 		strstr(filename.c_str(), "png"))
 		m_type = IMAGE;
-	else if (strstr(filename.c_str(), "avi"))
+	else if (strstr(filename.c_str(), "avi") ||
+		strstr(filename.c_str(), "mp4") ||
+		strstr(filename.c_str(), "wmv") ||
+		strstr(filename.c_str(), "mkv")
+		)
 		m_type = VIDEO;
 	else
 	{
@@ -452,17 +456,16 @@ int cvImp::nextFrame()
 void cvImp::syncFrame(ULONGLONG& current, const LONGLONG target)
 {
 	int diff = target - current;
-	if (diff<0)
+	if (diff == 0)
+		return;
+	if (diff < 0)
 	{
-		//ERROR
 		__STD_PRINT("%s\n", "cvImp:Unkonwn Exception.Stepped too much");
 		while (1)
 		{
 			continue;
 		}
 	}
-	else if (diff==0)
-		return;
 	else
 	{
 		__STD_PRINT("FrameSync:Jumped %d Frames\n", diff);
@@ -472,7 +475,6 @@ void cvImp::syncFrame(ULONGLONG& current, const LONGLONG target)
 			current += 1;
 		}
 	}
-		
 }
 void cvImp::syncStart()
 {
@@ -549,7 +551,7 @@ void cvImp::updateTex()
 {
 	BYTE* dst = data();
 	BYTE* src = m_frame.data;
-	assert(src!= NULL);
+	assert(src != NULL);
 	int step = m_frame.channels()*m_srcWidth;
 	for (int i = 0; i < m_frame.rows; i++)
 		memcpy(dst + i*step, m_frame.ptr(m_srcHeight - 1 - i), step);

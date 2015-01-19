@@ -45,7 +45,9 @@
 enum EVENT
 {
 	_OPEN,
-	_CLOSE
+	_CLOSE,
+	//Shift between play and pause
+	_PLAY_PAUSE
 };
 
 struct _MSG
