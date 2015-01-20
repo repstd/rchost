@@ -15,7 +15,7 @@ void wcharTochar(const wchar_t *wchar, char *chr, int length)
 PipeSignalBrocaster::PipeSignalBrocaster(const int port) : client(port, NULL), THREAD()
 {
 
-	loadIP("ip.ini");
+	loadIP("rcplayer_conf.ini");
 	__STD_PRINT("%s\n", "ip list loaded");
 }
 DWORD PipeSignalBrocaster::loadIP(const char* confg)
@@ -44,7 +44,10 @@ DWORD PipeSignalBrocaster::loadIP(const char* confg)
 		__STD_PRINT("%s\n", psection);
 		app = std::string(psection);
 		psection += app.size() + 1;
-		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		hr = GetPrivateProfileString(app.c_str(), "ip", "", attrStr, MAX_PATH, strINIPATH);
+
+		if (attrStr==NULL)
+			continue;
 		m_mapIpFlag[app.c_str()] = false;
 		memset(attrStr, 0, MAX_PATH);
 	}
@@ -134,13 +137,14 @@ void listenerSlave::run()
 
 multiListener::multiListener(const int port) : client(port, NULL), THREAD(), rcmutex()
 {
-	loadIP("ip.ini");
+	loadPlayerConfig("rcplayer_conf.ini");
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	__STD_PRINT("%s\n", "ip list loaded");
 	lock();
 	setStatus(_PLAY);
 	unlock();
-
+	//By default,we make the brocaster to send messages to the slaves in the speed of nearly 30 times/sec.
+	m_dTimeToSleep = 30.0;
 }
 
 multiListener ::~multiListener()
@@ -151,7 +155,7 @@ multiListener ::~multiListener()
 		(*iter)->cancel();
 	}
 }
-DWORD multiListener::loadIP(const char* confg)
+DWORD multiListener::loadPlayerConfig(const char* confg)
 {
 
 	char strINIPATH[MAX_PATH];
@@ -178,13 +182,36 @@ DWORD multiListener::loadIP(const char* confg)
 		__STD_PRINT("%s\n", psection);
 		app = std::string(psection);
 		psection += app.size() + 1;
-		hr = GetPrivateProfileString(psection, "ip", "", attrStr, MAX_PATH, strINIPATH);
+		hr = GetPrivateProfileString(app.c_str(), "ip", "", attrStr, MAX_PATH, strINIPATH);
+		if (attrStr==NULL)
+			continue;
 		g_mapIpFlag[app.c_str()] = false;
 		memset(attrStr, 0, MAX_PATH);
+	}
+	app = std::string("settings");
+	hr = GetPrivateProfileString(app.c_str(), "sleepTime","", attrStr, MAX_PATH, strINIPATH);
+	if (attrStr != NULL)
+	{
+		float t = atof(attrStr);
+		setTimeToSleep(t);
+	}
+	hr = GetPrivateProfileString(app.c_str(), "delayStartTime","", attrStr, MAX_PATH, strINIPATH);
+	if (attrStr != NULL)
+	{
+		float t = atof(attrStr);
+		setDelayStartTime(t);
 	}
 	return ERROR_SUCCESS;
 }
 
+void multiListener::setDelayStartTime(DWORD time)
+{
+	m_dTimeDelayed = time;
+}
+void multiListener::setTimeToSleep(DWORD time)
+{
+	m_dTimeToSleep = time;
+}
 bool multiListener::isPlaying()
 {
 	return m_status == _PLAY;
@@ -205,19 +232,17 @@ void multiListener::play()
 void multiListener::run()
 {
 	int first = 1;
-	Sleep(5000);
+	Sleep(m_dTimeDelayed);
 	int cnt = 0;
 	SYSTEMTIME time;
 	std::unique_ptr<SYNC_MSG> syncMsg(new SYNC_MSG);
 	ULONGLONG indexFrame = 0;
-	struct sockaddr from;
 	int totalSlaveCnt = g_mapIpFlag.size();
 	int unrespondedSlaveCnt = 0;
 	int tolerance = 2;
 	int allReceived;
 	while (isSocketOpen())
 	{
-
 		lock();
 		if (!isPlaying())
 		{
@@ -226,7 +251,6 @@ void multiListener::run()
 		}
 		else
 			unlock();
-
 		GetLocalTime(&time);
 		syncMsg->_timeStamp = time;
 		syncMsg->_index = ++indexFrame;
@@ -235,8 +259,7 @@ void multiListener::run()
 		if (first)
 		{
 			first = 0;
-
-			for (int i = 0; i < 24; i++)
+			for (int i = 0; i < 36; i++)
 			{
 				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
 				slave->Init();
@@ -244,7 +267,8 @@ void multiListener::run()
 				m_vecSlaves.push_back(slave);
 			}
 		}
-		Sleep(10);
+		for (int i = 0; i < m_dTimeToSleep; i++)
+			Sleep(0);
 		cnt = 0;
 		while (1)
 		{
@@ -380,12 +404,10 @@ DWORD HostOperatorAPI::createProgram(std::string filename, std::string path, con
 	}
 	STARTUPINFO si = {};
 	PROCESS_INFORMATION pi = {};
-
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	si.dwFlags = STARTF_RUNFULLSCREEN;
 	ZeroMemory(&pi, sizeof(pi));
-
 	//Add process access attributes.
 #if 0
 	PSECURITY_DESCRIPTOR pSD = NULL;
@@ -473,7 +495,6 @@ DWORD HostOperatorAPI::createProgram(std::string filename, bool isCurDirNeeded)
 	//	//sprintf(timeStampBuf, " --StartTime %ld",)
 
 	//}
-
 	return createProgram(filename, strPath, curDir, args, 1);
 
 }
@@ -532,7 +553,6 @@ char* HostOperatorAPI::parsePath(const char* fullpath)
 	int sz = p - start - 2;
 	char* curDir = new char[sz];
 	memcpy(curDir, start, sz);
-	//std::cout<<curDir<<std::endl;
 	return curDir;
 
 }
@@ -615,8 +635,8 @@ const char* HostOperator::getPrimaryAdapter()
 {
 	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
 	{
-		if (strncmp(iter->c_str(), "10.", 4) != -1
-			|| strncmp(iter->c_str(), "192.", 4) != -1
+		if (strncmp(iter->c_str(), "10.", 4) != -1 || 
+			strncmp(iter->c_str(), "192.", 4) != -1
 			)
 			return iter->c_str();
 	}
@@ -711,17 +731,20 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 				break;
 			case _CLOSE:
 				__STD_PRINT("%s\n", "Finish signaling the rcplayer");
-				m_pipeBrocaster->setCancelModeAsynchronous();
-				m_pipeBrocaster->cancel();
-				m_pipeBrocaster->cancelCleanup();
-				m_pipeBrocaster.release();
+				if (m_pipeBrocaster->isRunning())
+				{
+					m_pipeBrocaster->setCancelModeAsynchronous();
+					m_pipeBrocaster->cancel();
+					m_pipeBrocaster->cancelCleanup();
+					m_pipeBrocaster.release();
+				}
 				break;
 			case _PLAY_PAUSE:
 				if (m_pipeBrocaster->isRunning())
 					m_pipeBrocaster->play();
 				break;
 			default:
-				
+
 				break;
 			}
 			//TODO:Specify operation for master prog.

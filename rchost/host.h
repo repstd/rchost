@@ -61,14 +61,18 @@ class multiListener :protected client, public THREAD, public rcmutex
 public:
 	multiListener(const int port);
 	~multiListener();
-	DWORD loadIP(const char* confg);
+	DWORD loadPlayerConfig(const char* confg);
 	virtual void run();
 	virtual int cancel();
 	bool isPlaying();
 	void setStatus(int status);
 	void play();
+	void setTimeToSleep(DWORD time);
+	void setDelayStartTime(DWORD time);
 private:
 	int m_status;
+	DWORD m_dTimeDelayed;
+	DWORD m_dTimeToSleep;
 	std::vector<std::shared_ptr<listenerSlave>> m_vecSlaves;
 };
 //Abstract of a class for finishing the tasks assigned to the host.
@@ -83,7 +87,6 @@ protected:
 	std::string getPath(std::string filename);
 	std::string getArg(std::string filename);
 	std::string getArg(std::string filename, std::string additional);
-
 	DWORD createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc);
 	virtual char* parsePath(const char* fullpath);
 	DWORD createProgram(std::string filename, bool isCurDirNeeded);
@@ -92,7 +95,6 @@ protected:
 	std::map<std::string, std::string> m_mapNameArgs;
 	std::map<std::string, std::string> m_mapNameAdditionInfo;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
-
 };
 //Concrete class for host_operator.
 class HostOperator :public HostOperatorAPI
@@ -133,7 +135,6 @@ private:
 	int m_port;
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
-	//std::auto_ptr<PipeSignalBrocaster> m_pipeBrocaster;
 	std::unique_ptr<multiListener> m_pipeBrocaster;
 	static HostOperator* m_inst;
 

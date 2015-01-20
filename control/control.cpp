@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 	std::cout << "e.g: type 'osgSync 1(open_close_flag) 1(elapse_time_val)' to open osgSync.exe with time synchronized oand 'osgSync 0 1' to close." << std::endl;
 #ifdef _MULTI_THREAD_SAME_PORT_LISTEN
 	LISTENER_THREAD_POOL vecListenerClientPool;
-	for (int i = 0; i < 24; i++)
+	for (int i = 0; i < 36; i++)
 	{
 		vecListenerClientPool.push_back(std::unique_ptr<hostLISTENER>(new hostLISTENER(rc->getSocket())));
 	}

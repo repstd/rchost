@@ -551,7 +551,11 @@ void cvImp::updateTex()
 {
 	BYTE* dst = data();
 	BYTE* src = m_frame.data;
-	assert(src != NULL);
+	if (src == NULL || dst == NULL)
+	{
+		__STD_PRINT("%s\n", "Error in Frame Src or Dst");
+		exit(0);
+	}
 	int step = m_frame.channels()*m_srcWidth;
 	for (int i = 0; i < m_frame.rows; i++)
 		memcpy(dst + i*step, m_frame.ptr(m_srcHeight - 1 - i), step);
