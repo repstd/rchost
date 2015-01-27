@@ -8,6 +8,8 @@
 #include <string>
 #include "host.h"
 #include "rc_common.h"
+//global variables
+std::map<const std::string, bool, cmp> g_mapIpFlag;
 void wcharTochar(const wchar_t *wchar, char *chr, int length)
 {
 	WideCharToMultiByte(CP_ACP, 0, wchar, -1, chr, length, NULL, NULL);
@@ -37,7 +39,6 @@ DWORD PipeSignalBrocaster::loadIP(const char* confg)
 		return ERROR_NOT_FOUND;
 	}
 	CHAR* psection = lpReturnedSections;
-	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
 	std::string app;
 	while (*psection != 0x00)
 	{
@@ -64,7 +65,6 @@ void PipeSignalBrocaster::run()
 	{
 		char* msg = "pipe";
 		struct sockaddr from;
-		sendPacket(msg, strlen(msg));
 #if 0
 		__STD_PRINT("%s\n", "message Sent");
 #endif
@@ -125,18 +125,24 @@ void listenerSlave::run()
 			strMsg.assign(msgRcv);
 
 			lock();
-			iter = g_mapIpFlag.find(strMsg.c_str());
+			iter = g_mapIpFlag.find(strMsg);
 			if (iter != g_mapIpFlag.end())
+			{
 				iter->second = true;
+				//__STD_PRINT("ThreadID: %d\t Fliped:\t", getThreadId());
+				//__STD_PRINT("%s\n ", strMsg.c_str());
+
+			}
 			unlock();
-			__STD_PRINT("ThreadID: %d\t Fliped:\t", getThreadId());
-			__STD_PRINT("%s\n ", strMsg.c_str());
+			//__STD_PRINT("ThreadID: %d\t Fliped:\t", getThreadId());
+			//__STD_PRINT("%s\n ", strMsg.c_str());
 		}
 	}
 }
 
 multiListener::multiListener(const int port) : client(port, NULL), THREAD(), rcmutex()
 {
+
 	loadPlayerConfig("rcplayer_conf.ini");
 	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 	__STD_PRINT("%s\n", "ip list loaded");
@@ -175,17 +181,17 @@ DWORD multiListener::loadPlayerConfig(const char* confg)
 		return ERROR_NOT_FOUND;
 	}
 	CHAR* psection = lpReturnedSections;
-	_LOG_FORMAT_HOST("%s\n", lpReturnedSections);
 	std::string app;
 	while (*psection != 0x00)
 	{
-		__STD_PRINT("%s\n", psection);
 		app = std::string(psection);
 		psection += app.size() + 1;
+		if (strstr(app.c_str(), "settings")!=NULL)
+			continue;
 		hr = GetPrivateProfileString(app.c_str(), "ip", "", attrStr, MAX_PATH, strINIPATH);
 		if (attrStr==NULL)
 			continue;
-		g_mapIpFlag[app.c_str()] = false;
+		__STD_PRINT("Target %s Added.\n", g_mapIpFlag.insert(std::make_pair(app, false)).first->first.c_str());
 		memset(attrStr, 0, MAX_PATH);
 	}
 	app = std::string("settings");
@@ -241,25 +247,26 @@ void multiListener::run()
 	int unrespondedSlaveCnt = 0;
 	int tolerance = 2;
 	int allReceived;
+	GetLocalTime(&time);
 	while (isSocketOpen())
 	{
-		lock();
-		if (!isPlaying())
-		{
-			unlock();
-			continue;
-		}
-		else
-			unlock();
-		GetLocalTime(&time);
-		syncMsg->_timeStamp = time;
-		syncMsg->_index = ++indexFrame;
-		strcpy(syncMsg->_userData, "control#next_frame");
-		sendPacket((char*)(syncMsg.get()), sizeof(SYNC_MSG));
+		//lock();
+		//if (!isPlaying())
+		//{
+		//	unlock();
+		//	continue;
+		//}
+		//else
+		//	unlock();
+		//syncMsg->_timeStamp = time; 
+		//syncMsg->_index = ++indexFrame; 
+		//strcpy(syncMsg->_userData, "control#next_frame");
+		//sendPacket((char*)(syncMsg.get()), sizeof(SYNC_MSG));
+		sendPacket((char*)(&time), sizeof(SYSTEMTIME));
 		if (first)
 		{
 			first = 0;
-			for (int i = 0; i < 36; i++)
+			for (int i = 0; i < 48; i++)
 			{
 				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
 				slave->Init();
@@ -267,30 +274,29 @@ void multiListener::run()
 				m_vecSlaves.push_back(slave);
 			}
 		}
-		for (int i = 0; i < m_dTimeToSleep; i++)
-			Sleep(0);
 		cnt = 0;
 		while (1)
 		{
 			cnt += 1;
 			allReceived = 1;
-			unrespondedSlaveCnt = 0;
+			unrespondedSlaveCnt = 0; 
 			for (std::map<const std::string, bool, cmp>::iterator iter = g_mapIpFlag.begin(); iter != g_mapIpFlag.end(); iter++)
-			{
+			{ 
 				if (!iter->second)
 				{
 					allReceived = 0;
 					unrespondedSlaveCnt += 1;
 				}
 			}
+			//__STD_PRINT("%d\t", unrespondedSlaveCnt);
+			//__STD_PRINT("%d\n", totalSlaveCnt);
 			if (unrespondedSlaveCnt == totalSlaveCnt)
 				continue;
 			if (unrespondedSlaveCnt< tolerance)
 				allReceived = 1;
-			if (cnt>300 && !allReceived)
+			if (cnt>8000 && !allReceived)
 			{
 				allReceived = 1;
-				__DEBUG_PRINT("%s\n", "Expired.");
 			}
 			if (allReceived == 1)
 			{
@@ -300,7 +306,6 @@ void multiListener::run()
 					iter->second = false;
 				}
 				unlock();
-				__STD_PRINT("%s\n", "*******************************");
 				break;
 			}
 		}
@@ -561,6 +566,7 @@ HostOperator* HostOperator::m_inst = new HostOperator;
 HostOperator* HostOperator::instance() { return m_inst; }
 
 DWORD HostOperator::loadConfig(const char* config)
+
 {
 	char strINIPath[MAX_PATH];
 	_fullpath(strINIPath, config, MAX_PATH);

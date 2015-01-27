@@ -29,9 +29,18 @@
 #define _PRINT(fmt,data) std::printf(fmt,data);
 
 #define __STD_PRINT(fmt,data,...) _PRINT(fmt,data)  
+
+#define _DBOUT( fmt,data ) \
+{						 \
+	char buf[MAX_PATH];	\
+	sprintf(buf, fmt, data);	\
+	OutputDebugStringA(buf);\
+}
+
 //#define __DEBUG_PRINT(fmt,data,...) __STD_PRINT(fmt,data)
 
-#define __DEBUG_PRINT(fmt,data,...) 
+#define __DEBUG_PRINT(fmt,data,...)  _DBOUT(fmt,data)
+
 #define _FMT_TIME "%02d-%02d-%02d %02d:%02d:%02d:%02d\n"
 #define _STD_PRINT_TIME(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDay,systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define _STD_ENCODE_TIMESTAMP(buf,systime) std::sprintf(buf,_FMT_TIME,systime.wYear,systime.wMonth,systime.wDay,systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
@@ -91,12 +100,7 @@ struct cmp
 
 	bool operator()(const std::string a, const std::string b)
 	{
-
-
-		if (strcmp(a.c_str(), b.c_str()))
-			return true;
-		else
-			return false;
+		return strcmp(a.c_str(), b.c_str()) == 1;
 	}
 
 };
