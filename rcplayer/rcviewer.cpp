@@ -3,14 +3,17 @@
 #include "osgDB/readFile"
 #include <osgViewer/ViewerEventHandlers>
 #include <osgViewer/Viewer>
-#define _PLAYER_LOG_FILENAME "./opencv_player.log"
+#define _PLAYER_LOG_FILENAME "./rcviewer.log"
 #define _PLAYER_LOG_INIT __LOG_INIT(_PLAYER_LOG_FILENAME)
 #define _PLAYER_LOG(fmt,data) __LOG_FORMAT(_PLAYER_LOG_FILENAME,fmt,data)
 #define _PLAYER_LOG_TIME(time) __LOG__FORMAT_TIME(_PLAYER_LOG_FILENAME,time)
 
 rcviewer::rcviewer(playerImp* imp) : osgViewer::Viewer()
 {
+	
+	_PLAYER_LOG_INIT
 	m_pPlayerImplementation = imp;
+
 }
 
 rcviewer::rcviewer(impFactory* factory, char* nameImp) : osgViewer::Viewer()
@@ -90,6 +93,7 @@ int rcviewer::handleOpenCV()
 		if (size == sizeof(SYNC_MSG))
 		{
 			advance();
+			//frameStat();
 			syncMsgRcv = reinterpret_cast<SYNC_MSG*>(msgRcv);
 			imp->nextFrame();
 			totalPlayed += 1;
@@ -98,6 +102,18 @@ int rcviewer::handleOpenCV()
 			frame();
 			imp->imageDirty();
 			time = syncMsgRcv->_timeStamp;
+			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
+		}
+				
+		else if (size == sizeof(SYSTEMTIME))
+		{
+			advance();
+			frameStat();
+			imp->nextFrame();
+			totalPlayed += 1;
+			imp->updateTex();
+			frame();
+			imp->imageDirty();
 			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 		}
 	}
@@ -119,12 +135,16 @@ int rcviewer::handleVLC()
 	char msgRcv[_MAX_DATA_SIZE];
 	int size = -1;
 	const char* msg = m_hostname.c_str();
-	while (!done() && sync_server->isSocketOpen())
+
+	srand((unsigned)time(NULL)); 
+
+	float a = rand() % 3;
+	Sleep(a * 1000);
+	while (!done())
 #endif
 	{
 #ifndef _PIPE_SYNC
-		size = -1;
-		sync_server->getPacket(from, msgRcv, size, _MAX_DATA_SIZE);
+		size = 0;
 		if (size != -1)
 		{
 #endif
@@ -135,7 +155,6 @@ int rcviewer::handleVLC()
 			image->dirty();
 			__STD_PRINT("%f\n", image->getPosition());
 #ifndef _PIPE_SYNC
-			sync_server->sendPacket(from, const_cast<char*>(msg), strlen(msg), _MAX_DATA_SIZE);
 		}
 #endif
 	}
@@ -150,4 +169,30 @@ int rcviewer::run()
 #else
 	return handleOpenCV();
 #endif
+}
+void rcviewer::frameStat()
+{
+		static DWORD frameCnt = 0;
+		static DWORD stamp = 0;
+		static float fps = 0.0;
+		static DWORD last = GetTickCount();
+		static DWORD elapse_time = 0;
+		static DWORD average = 0;
+		static int cnt = 0;
+		stamp++;
+		++frameCnt;
+		DWORD now = GetTickCount();
+		elapse_time = now - last;
+		char buf[MAX_PATH];
+		if (now - last >= 1000)
+		{
+			fps = frameCnt;
+			cnt++;
+			average += fps;
+			sprintf(buf, "%d %0.f\n", cnt, fps);
+			//OutputDebugStringA(buf);
+			_PLAYER_LOG("%s", buf);
+			frameCnt = 0;
+			last = now;
+		}
 }

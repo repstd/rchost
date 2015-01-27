@@ -4,6 +4,7 @@
 
 server::server(int port)
 {
+	setType(SOCK_DGRAM);
 	initForPort(port);
 }
 
@@ -15,13 +16,14 @@ server::~server()
 int server::initSocket(int port, ULONG S_addr)
 {
 
-	m_port = port;
-#ifdef TCP_CONN
-	m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#else
-	m_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	setPort(port);
+	int type = getType();
 
-#endif
+	if (type == SOCK_STREAM)
+		m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	else
+		m_socket = socket(AF_INET, SOCK_DGRAM, 0);
+
 	const bool on = 1;
 	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
 
@@ -38,24 +40,26 @@ int server::initSocket(int port, ULONG S_addr)
 
 	int len = sizeof(sockaddr);
 
-#ifdef TCP_CONN
-	if (bind(m_netSocket, (LPSOCKADDR)&addr, len) == SOCKET_ERROR)
+	if (type == SOCK_STREAM)
 	{
+		if (bind(m_socket, (LPSOCKADDR)&m_addrSvr, len) == SOCKET_ERROR)
+		{
 
-		PRINT_ERR("Error in Binding Socket", WSAGetLastError());
+			__STD_PRINT("Error in Binding Socket", WSAGetLastError());
+		}
+		if (listen(m_socket, 10) == SOCKET_ERROR)
+		{
+			__STD_PRINT("listen error !", WSAGetLastError());
+			return 0;
+		}
 	}
-	if (listen(m_netSocket, 10) == SOCKET_ERROR)
+	else
 	{
-		PRINT_ERR("listen error !", WSAGetLastError());
-		return 0;
+		if (bind(m_socket, (SOCKADDR *)&m_addrSvr, len) == SOCKET_ERROR)
+		{
+			__STD_PRINT("Error in Binding Socket.ErrorCode: %d\n ", GetLastError());
+		}
 	}
-#else
-	if (bind(m_socket, (SOCKADDR *)&m_addrSvr, len) == SOCKET_ERROR)
-	{
-		//PRINT_ERR();
-		__STD_PRINT("Error in Binding Socket.ErrorCode: %d\n ", GetLastError());
-	}
-#endif
 	return true;
 
 }
