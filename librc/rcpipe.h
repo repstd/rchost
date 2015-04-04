@@ -102,6 +102,6 @@ class rcpipe
 {
 public:
 	rcpipe();
-	~rcpipe();
+	virtual ~rcpipe();
 };
 

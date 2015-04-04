@@ -12,7 +12,7 @@ class playerImp
 {
 public:
 	playerImp(){ return; }
-	~playerImp(){ return; }
+	virtual ~playerImp(){ return; }
 	virtual int nextFrame() = 0;
 	virtual void syncFrame(ULONGLONG& current, const LONGLONG target){ return; };
 	virtual void bindTexSrc(osg::Texture2D*) { return; }
