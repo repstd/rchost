@@ -8,7 +8,7 @@ class RCPLAYER_API
 {
 public:
 	RCPLAYER_API();
-	~RCPLAYER_API();
+	virtual ~RCPLAYER_API();
 
 public:
 	virtual int initPlayer(const char* const* vlc_argv = 0, const int argc = 0) = 0;
@@ -54,7 +54,7 @@ public:
 
 protected:
 	RCPLAYER();
-	~RCPLAYER()
+	virtual ~RCPLAYER()
 	{
 		//setCancelModeAsynchronous();
 		//cancel();
