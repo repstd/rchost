@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <memory>
 #include <iostream>
+#include "rcfactory.h"
 static char* test_instruction[2] =
 {
 	"image 1 0",
@@ -149,7 +150,7 @@ int main(int argc, char *argv[])
 		<< "Usage: " << std::endl
 		<< "control host(optional) port(optional)" << std::endl
 		<< "\nTo specify the path and the arguments list of the programs,modify the 'control.ini' in the directory of the hosting program." << std::endl;
-	std::unique_ptr<client> rc(new client());
+	std::unique_ptr<client> rc(rcfactory::instance()->createUdpClient());
 	int defaultPort = 20715;
 	//cmd:control
 	if (argc < 2)

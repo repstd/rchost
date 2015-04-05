@@ -60,7 +60,7 @@ void rcviewer::setupViewer(int width, int height, const char* keyStoneFilename)
 	addEventHandler(new osgViewer::WindowSizeHandler);
 	osg::setNotifyHandler(new errorHandler);
 	sync_pipe_client = std::shared_ptr<namedpipeClient>(new namedpipeClient(_RC_PIPE_NAME));
-	sync_server = std::shared_ptr<server>(new server(_RC_PIPE_BROADCAST_PORT));
+	sync_server = std::shared_ptr<server>(rcfactory::instance()->createUdpServer(_RC_PIPE_BROADCAST_PORT));
 	char host_name[MAX_PATH];
 	gethostname(host_name, MAX_PATH);
 	m_hostname = host_name;

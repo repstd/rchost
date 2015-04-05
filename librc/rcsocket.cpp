@@ -129,3 +129,7 @@ int rcsocket::sendPacket(sockaddr to, void *data, int size, int maxSize)
 	return true;
 
 }
+SOCKET rcsocket::getSocket()
+{
+	return m_socket;
+}

@@ -7,11 +7,7 @@ class NAMEDPIPE_API
 {
 
 public:
-	NAMEDPIPE_API(const char* pipeName)
-	{
-		m_pipeName = pipeName;
-		return;
-	}
+	NAMEDPIPE_API(const char* pipeName) { m_pipeName = pipeName; return; }
 	virtual HANDLE createPipe(const char* pipeName) = 0;
 	virtual  int write(const void* msg, const DWORD sizeToWrite, DWORD& sizeWritten, const LPOVERLAPPED overlap)
 	{
@@ -56,52 +52,56 @@ public:
 		}
 		return  1;
 	}
-	const HANDLE getHandle() const
-	{
-		return m_hPipe;
-	}
-	const char* getPipeName() const
-	{
-		return m_pipeName.c_str();
-	}
-	const void closeHandle() const
-	{
-		CloseHandle(m_hPipe);
-	}
+	const HANDLE getHandle() const { return m_hPipe; }
+	const char* getPipeName() const { return m_pipeName.c_str(); }
+	const void closeHandle() const { CloseHandle(m_hPipe); }
 protected:
 	HANDLE		m_hPipe;
 	std::string m_pipeName;
 };
-class namedpipeServer :public NAMEDPIPE_API
+
+class rcpipeServer :public NAMEDPIPE_API
 {
-
 public:
-
-	namedpipeServer(const char* pipeName);
-
-	virtual HANDLE createPipe(const char* pipeName);
-	int connect();
+	rcpipeServer(const char* pipeName, DWORD inputBufSize = 512, DWORD outputBufSize = 512);
+	virtual ~rcpipeServer();
+	int writeto(const void* msg, const DWORD sizeToWrite, DWORD& sizeWritten, const LPOVERLAPPED overlap);
+	int connect(const LPOVERLAPPED overlap=NULL);
 	int disconnect();
-	int signalClient();
+protected:
+	virtual HANDLE createPipe(const char* pipeName);
 private:
-	int m_szBUF;
+	int m_inBufSize;
+	int m_outBufSize;
 };
 
-class namedpipeClient:public NAMEDPIPE_API
+class rcpipeClient :public NAMEDPIPE_API
+{
+public:
+	rcpipeClient(const char* pipeName, DWORD inputBufSize = 512, DWORD outputBufSize = 512);
+	virtual ~rcpipeClient();
+	int readfrom(void* msgBuf, const DWORD sizeAllocated, DWORD& sizeRead, const LPOVERLAPPED overlap);
+	int connect(const LPOVERLAPPED overlap=NULL);
+	int disconnect();
+protected:
+	virtual HANDLE createPipe(const char* pipeName);
+private:
+	int m_inBufSize;
+	int m_outBufSize;
+};
+
+class namedpipeServer :public rcpipeServer
+{
+public:
+	namedpipeServer(const char* pipeName);
+	int signalClient();
+};
+
+class namedpipeClient :public rcpipeClient
 {
 public:
 	namedpipeClient(const char* pipeName);
-		
-	virtual HANDLE createPipe(const char* pipeName);
 	int receive();
-private:
-	int m_szBUF;
+};
 
-};
-class rcpipe
-{
-public:
-	rcpipe();
-	virtual ~rcpipe();
-};
 

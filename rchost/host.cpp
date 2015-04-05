@@ -192,7 +192,7 @@ DWORD multiListener::loadPlayerConfig(const char* confg)
 	hr = GetPrivateProfileString(app.c_str(), "sleepTime","", attrStr, MAX_PATH, strINIPATH);
 	if (attrStr != NULL)
 	{
-		float t = atof(attrStr);
+		DWORD t = atof(attrStr);
 		setTimeToSleep(t);
 	}
 	hr = GetPrivateProfileString(app.c_str(), "delayStartTime","", attrStr, MAX_PATH, strINIPATH);
@@ -838,9 +838,7 @@ void HostMsgHandler::syncTime() const
 
 host::host(const int port) :server(port), THREAD(), rcmutex()
 {
-
 	m_port = port;
-
 	queryHostInfo(HostOperator::instance());
 }
 const char* host::getName() const
