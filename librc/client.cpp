@@ -42,7 +42,7 @@ int udpClient::initSocket(int port, ULONG S_addr)
 	m_socket = socket(AF_INET, SOCK_DGRAM, 0);
 	const bool on = true;
 	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
-	//u_long mode = 1;
+	u_long mode = 1;
 	//ioctlsocket(m_socket, FIONBIO, &mode);
 	if (m_socket < 0)
 	{
@@ -179,9 +179,9 @@ int tcpClient::initSocket(int port, ULONG S_addr)
 	}
 	assert(m_socket >= 0);
 	m_addrSvr.sin_family = AF_INET;
-	m_addrSvr.sin_port = htons((short)m_port);
+	m_addrSvr.sin_port = htons((u_short)m_port);
 	assert(serverAddr!=NULL);
-
+	
 	if (connect(m_socket, (sockaddr *)&m_addrSvr, sizeof(m_addrSvr)) == SOCKET_ERROR)
 	{
 		printf("connect error !");

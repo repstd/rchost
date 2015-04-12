@@ -2,9 +2,7 @@
 #ifndef _HOST_H
 #define _HOST_H
 #endif
-
 #ifdef _HOST_H
-
 #include "stdafx.h"
 #include <Windows.h>
 #include <map>
@@ -13,7 +11,7 @@
 #include "client.h"
 #include "rc_common.h"
 #include "rcthread.h"
-#include "rcpipe.h"
+#include "rcfactory.h"
 #ifdef _LOG 
 #define HOST_LOG_FILENAME "./host.log"
 #define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
@@ -31,7 +29,8 @@ typedef std::map < std::string, std::shared_ptr<namedpipeServer>>::iterator HOST
 
 //global variables
 static std::map<const std::string, bool, cmp> g_mapIpFlag;
-//Start a brocaster to signal the child process in the slave host
+class host;
+
 class PipeSignalBrocaster :protected client, public THREAD
 {
 public:
@@ -75,6 +74,26 @@ private:
 	DWORD m_dTimeToSleep;
 	std::vector<std::shared_ptr<listenerSlave>> m_vecSlaves;
 };
+class PipeServer :public THREAD
+{
+public:
+	PipeServer(const char* pipename);
+	virtual void run();
+	virtual void cancle();
+private:
+	std::unique_ptr<namedpipeServer> m_pipeServer;
+};
+
+//For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
+class PipeSignalHandler :protected server, public THREAD
+{
+public:
+	PipeSignalHandler(host* phost, const int port);
+	virtual void run();
+private:
+	std::unique_ptr<host> m_host;
+};
+
 //Abstract of a class for finishing the tasks assigned to the host.
 class HostOperatorAPI :public HOST_CONFIG_API, public rcmutex
 {
@@ -136,6 +155,8 @@ private:
 	std::vector<std::string> m_vecAdapter;
 	std::vector<std::string> m_vecClients;
 	std::unique_ptr<multiListener> m_pipeBrocaster;
+	std::unique_ptr<rcOsgHostClient> m_osgHostCli;
+	std::unique_ptr<rcOsgHostServer> m_osgHostSvr;
 	static HostOperator* m_inst;
 
 };
@@ -175,26 +196,6 @@ public:
 private:
 	std::map < std::string, std::shared_ptr<namedpipeServer>> m_mapNamedPipeServer;
 	int m_port;
-};
-
-class PipeServer :public THREAD
-{
-public:
-	PipeServer(const char* pipename);
-	virtual void run();
-	virtual void cancle();
-private:
-	std::unique_ptr<namedpipeServer> m_pipeServer;
-};
-
-//For each host thread,we need a listener to listen the specified port and recive the feedback from clients.
-class PipeSignalHandler :protected server, public THREAD
-{
-public:
-	PipeSignalHandler(host* phost, const int port);
-	virtual void run();
-private:
-	std::unique_ptr<host> m_host;
 };
 
 #endif

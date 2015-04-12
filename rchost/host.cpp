@@ -46,7 +46,7 @@ DWORD PipeSignalBrocaster::loadIP(const char* confg)
 		psection += app.size() + 1;
 		hr = GetPrivateProfileString(app.c_str(), "ip", "", attrStr, MAX_PATH, strINIPATH);
 
-		if (attrStr==NULL)
+		if (attrStr == NULL)
 			continue;
 		m_mapIpFlag[app.c_str()] = false;
 		memset(attrStr, 0, MAX_PATH);
@@ -183,19 +183,19 @@ DWORD multiListener::loadPlayerConfig(const char* confg)
 		app = std::string(psection);
 		psection += app.size() + 1;
 		hr = GetPrivateProfileString(app.c_str(), "ip", "", attrStr, MAX_PATH, strINIPATH);
-		if (attrStr==NULL)
+		if (attrStr == NULL)
 			continue;
 		g_mapIpFlag[app.c_str()] = false;
 		memset(attrStr, 0, MAX_PATH);
 	}
 	app = std::string("settings");
-	hr = GetPrivateProfileString(app.c_str(), "sleepTime","", attrStr, MAX_PATH, strINIPATH);
+	hr = GetPrivateProfileString(app.c_str(), "sleepTime", "", attrStr, MAX_PATH, strINIPATH);
 	if (attrStr != NULL)
 	{
 		DWORD t = atof(attrStr);
 		setTimeToSleep(t);
 	}
-	hr = GetPrivateProfileString(app.c_str(), "delayStartTime","", attrStr, MAX_PATH, strINIPATH);
+	hr = GetPrivateProfileString(app.c_str(), "delayStartTime", "", attrStr, MAX_PATH, strINIPATH);
 	if (attrStr != NULL)
 	{
 		float t = atof(attrStr);
@@ -347,7 +347,7 @@ std::string HostOperatorAPI::getArg(std::string filename)
 {
 	HOST_MAP_ITER iter = m_mapNameArgs.find(filename);
 	if (iter == m_mapNameArgs.end())
-		return NULL;
+		return "";
 	else
 		return iter->second;
 
@@ -357,7 +357,7 @@ std::string HostOperatorAPI::getArg(std::string filename, std::string additional
 
 	std::string originalArg = getArg(filename).c_str();
 	if (originalArg.c_str() == NULL)
-		return NULL;
+		return "";
 	char buf[MAX_PATH];
 	sprintf(buf, "%s", originalArg.c_str());
 	char* p = strstr(buf, "--SettledTime");
@@ -635,7 +635,7 @@ const char* HostOperator::getPrimaryAdapter()
 {
 	for (std::vector<std::string>::iterator iter = m_vecAdapter.begin(); iter != m_vecAdapter.end(); iter++)
 	{
-		if (strncmp(iter->c_str(), "10.", 4) != -1 || 
+		if (strncmp(iter->c_str(), "10.", 4) != -1 ||
 			strncmp(iter->c_str(), "192.", 4) != -1
 			)
 			return iter->c_str();
@@ -669,7 +669,7 @@ void HostOperator::updateArg(std::string filename, std::string additional)
 
 	if (composite == NULL)
 	{
-		unlock();
+		unlock(); 
 		return;
 	}
 
@@ -691,28 +691,58 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 	bool isCurDirNeeded = false;
 	if (iter != m_mapNameAdditionInfo.end())
 	{
-		if (strstr(iter->second.c_str(), "-s") != NULL)
+		if (strstr(iter->second.c_str(), "-m") != NULL&&op == _CLOSE&&strstr(iter->second.c_str(), "-osgRendering") != NULL
+			&&m_osgHostCli.get()&&m_osgHostCli->isRunning())
 		{
-			//TODO:Specify operatoins for slave prog.
+			m_osgHostCli->setCancelModeAsynchronous();
+			m_osgHostCli->cancel();
+			m_osgHostCli->cancelCleanup();
+			m_osgHostCli.release();
 		}
-		if (strstr(iter->second.c_str(), "-curDir") != NULL)
-		{
+		else if (strstr(iter->second.c_str(), "-s") != NULL&&op == _OPEN&&strstr(iter->second.c_str(), "-osgRendering") != NULL
+			&&m_osgHostSvr.get()==NULL) {
+			/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
+			*/
+			m_osgHostSvr = std::unique_ptr<rcOsgHostServer>(rcfactory::instance()->createOsgHostServer("Slave", 6011));
+			m_osgHostSvr->start();
+			Sleep(1000);
+		}
+
+		if (strstr(iter->second.c_str(), "-curDir") != NULL) {
 			isCurDirNeeded = true;
 		}
-		if (strstr(iter->second.c_str(), "-defaultDir") != NULL)
-		{
+		if (strstr(iter->second.c_str(), "-defaultDir") != NULL) {
 			isCurDirNeeded = false;
 		}
 
 	}
 
-	HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
-
+	DWORD result=HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
+	__STD_PRINT("Opening Result:%d\n", result);
+	//add more operations here when more programms are geeting managed
 	if (iter != m_mapNameAdditionInfo.end())
 	{
-		if (strstr(iter->second.c_str(), "-m") != NULL)
+		if (strstr(iter->second.c_str(), "-s") != NULL&&op == _CLOSE&&strstr(iter->second.c_str(), "-osgRendering") != NULL
+			&&m_osgHostSvr.get()&&m_osgHostSvr->isRunning()) 
 		{
-			__DEBUG_PRINT("%s\n", "-m");
+			m_osgHostSvr->setCancelModeAsynchronous();
+			m_osgHostSvr->cancel();
+			m_osgHostSvr->cancelCleanup();
+			m_osgHostSvr.release(); 
+		}
+		else if (strstr(iter->second.c_str(), "-m") != NULL&&op == _OPEN&&strstr(iter->second.c_str(), "-osgRendering") != NULL
+			&&m_osgHostCli.get()==NULL )
+		{
+			/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
+			*/
+			//Make sure the memshare is ready.
+			Sleep(500);
+			m_osgHostCli = std::unique_ptr<rcOsgHostClient>(rcfactory::instance()->createOsgHostClient("Master", 6011));
+			m_osgHostCli->start();
+		}
+		else if (strstr(iter->second.c_str(), "-m") != NULL&&strstr(iter->second.c_str(), "-osgRendering")==NULL)
+		{
+
 			if (m_pipeBrocaster.get() == NULL)
 			{
 				std::unique_ptr<multiListener> temp(new multiListener(_RC_PIPE_BROADCAST_PORT));
@@ -756,7 +786,7 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 HostMsgHandler::HostMsgHandler(const HOST_MSG* msg) :THREAD(), rcmutex()
 {
 	//use a normal mutex instead of a recursive one.
-	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+	initMutex(new MUTEX(MUTEX::MUTEX_RECURSIVE));
 
 	//Assign the server a msg to handle
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));

@@ -2,11 +2,10 @@
 #include "assert.h"
 #include <memory>
 #include <vector>
-
 #define _MSG_ARGC 20
 #define _MSG_BUF_SIZE 300
 #define _MAX_DATA_SIZE (sizeof(_MSG))
-
+#define _MAX_OSG_DATA_SIZE (sizeof(_SYNC_OSG_MSG))
 
 #define __LOG(filename,info)\
 { \
@@ -50,7 +49,7 @@ enum EVENT
 	_PLAY_PAUSE
 };
 
-struct _MSG
+typedef struct _MSG
 {
 	_MSG()
 	{
@@ -78,7 +77,7 @@ struct _MSG
 	FILETIME _time;
 	char _pBuf[_MSG_BUF_SIZE];
 	int  _pSize[_MSG_ARGC];
-};
+} _MSG;
 
 typedef struct _SYNC_MSG
 {
@@ -86,13 +85,20 @@ typedef struct _SYNC_MSG
 	ULONGLONG _index;
 	char _userData[32];
 } SYNC_MSG;
+typedef struct _SYNC_OSG_MSG
+{
+	int _eventSize;
+	double _matrix[16];
+	double _modelView[16];
+	double _projection[16];
+	char _event[512];
+} SYNC_OSG_MSG;
+
 struct cmp
 {
 
 	bool operator()(const std::string a, const std::string b)
 	{
-
-
 		if (strcmp(a.c_str(), b.c_str()))
 			return true;
 		else

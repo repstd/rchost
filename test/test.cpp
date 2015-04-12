@@ -98,16 +98,82 @@ public:
 	}
 
 };
+class TCPServerThread :public THREAD
+{
+public:
+	TCPServerThread() :THREAD() { }
+	void run()
+	{
+		tcpServer* svr = rcfactory::instance()->createTcpServer(8888);
+		char msg[30];
+		int maxSize = 30;
+		int size;
+		SOCKADDR from;
+		while (svr->isSocketOpen())
+		{
+			std::cout << "accepting..." << std::endl;
+			svr->getPacket(from, msg, size,maxSize);
+			std::cout << from.sa_data<< std::endl;
+		}
+	}
+};
+class TCPClientThread :public THREAD
+{
+public:
+	TCPClientThread() :THREAD() { }
+	void run()
+	{
+		tcpClient* cli = rcfactory::instance()->createTcpClient(8888, "127.0.0.1");
+		std::cout << "sending..." << std::endl;
+		char* msg = "From CTH.";
+		int maxSize = 30;
+		while (1)
+		{
+			std::cout << "sending..." << std::endl;
+			cli->sendPacket(msg, strlen(msg)+1);
+		}
+	}
+};
+void testTCP()
+{
+	TCPServerThread svrth;
+	TCPClientThread clith;
+	//svrth.start();
+	clith.start();
+	clith.join();
+	//svrth.join();
+}
+void testMemShare()
+{
+	//rcFileMapWriter* writer = rcfactory::instance()->createFileMapWriter("Memshare");
+	char* msg = "test";
+	//writer->write(msg, strlen(msg));
+	//Sleep(30);
+	char buf[512];
+	double* p;
+	rcFileMapReader* reader = rcfactory::instance()->createFileMapReader("MemShare");
+	while (1)
+	{
+		reader->read(buf, 16 * sizeof(double));
+		p = reinterpret_cast<double*>(buf);
+		for (int i = 0; i < 4; i++)
+		{
+			for (int j = 0; j < 4; j++)
+				std::cout << *((p+ 4* i + j)) << " ";
+			std::cout << std::endl;
+		}
+		std::cout << "Frame Matrix Obtained."<< std::endl;
+	}
+}
+void testOsgSyncMsg()
+{
+	rcOsgHostClient* cli = rcfactory::instance()->createOsgHostClient("MemShare", 6011);
+	cli->start();
+	cli->join();
+}
 #define MODE 1
 int _tmain(int argc, _TCHAR* argv[])
 {
-
-	//pipeServer svr;
-	pipeClient cli;
-	cli.start();
-	//Sleep(3000);
-	//svr.start();
-	cli.join();
-	//svr.join();
+	testOsgSyncMsg();
 	return 0;
 }

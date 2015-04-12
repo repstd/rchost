@@ -45,7 +45,7 @@ int rcsocket::getPort()
 }
 int rcsocket::isSocketOpen()
 {
-		if (m_socket)
+		if (m_socket>=0)
 			return true;
 		return false;
 }

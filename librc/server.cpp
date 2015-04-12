@@ -117,13 +117,13 @@ int tcpServer::initSocket(int port, ULONG S_addr)
 	m_port = port;
 	m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	const bool on = 1;
-	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
+	//setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&on, sizeof(int));
 	if (m_socket <= 0) {
 		__STD_PRINT("Error in Creating tcpServer.ErrorCode: %d\n ", GetLastError());
 	}
 
 	u_long mode = 0;
-	ioctlsocket(m_socket, FIONBIO, &mode);
+	//ioctlsocket(m_socket, FIONBIO, &mode);
 	m_addrSvr.sin_family = AF_INET;
 	m_addrSvr.sin_port = htons((u_short)m_port);
 	m_addrSvr.sin_addr.S_un.S_addr = S_addr;
@@ -145,9 +145,8 @@ int tcpServer::getPacket(sockaddr& from, void *data, int &size, int maxSize) {
 	int len = sizeof(sockaddr);
 	if (m_socket) {
 		m_sClient = accept(m_socket, (sockaddr *)&from, &len);
-		if (m_sClient<= 0)
+		if (m_sClient< 0)
 			return false;
-
 		size = recv(m_sClient, (char*)data, maxSize, 0);
 	}
 	else {

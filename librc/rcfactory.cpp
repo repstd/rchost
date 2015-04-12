@@ -83,3 +83,29 @@ tcpClient* rcfactory::createTcpClient()
 	m_mutex->unlock();
 	return cli;
 }
+
+int rcfactory::getPortStatic(int port)
+{
+	return m_mapUsedPort[port];
+}
+rcFileMapWriter* rcfactory::createFileMapWriter(char* name)
+{
+	rcFileMapWriter* writer = new rcFileMapWriter(name);
+	return writer;
+}
+rcFileMapReader* rcfactory::createFileMapReader(char* name)
+{
+	rcFileMapReader* reader= new rcFileMapReader(name);
+	return reader;
+}
+rcOsgHostClient* rcfactory::createOsgHostClient(char* name, int port)
+{
+	rcOsgHostClient* osgSyncClient = new rcOsgHostClient(name, port, NULL);
+	return osgSyncClient;
+}
+
+rcOsgHostServer* rcfactory::createOsgHostServer(char* name, int port)
+{
+	rcOsgHostServer* osgSyncSvr = new rcOsgHostServer(name, port);
+	return osgSyncSvr;
+}
