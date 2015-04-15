@@ -20,7 +20,7 @@ rcmemshare::~rcmemshare()
 }
 rcFileMap::rcFileMap() {
 	m_dwMaximumSizeHigh = 0;
-	m_dwMaximumSizeLow = 1024;
+	m_dwMaximumSizeLow = 65536;
 }
 rcFileMap::~rcFileMap()
 {
@@ -53,16 +53,24 @@ void rcFileMap::setMaxSizeLow(DWORD szLow)
 void rcFileMap::rcMapViewofFile(HANDLE hMapFile)
 {
 
+	size_t sz;
+	sz = getMaxSizeHigh();
+	sz <<= 16;
+	sz ^= getMaxSizeLow();
 	m_pViewOfFile = (BYTE*)MapViewOfFile(hMapFile,   // handle to map object
 		FILE_MAP_ALL_ACCESS, // read/write permission
 		0,
 		0,
-		getMaxSizeLow());
+		sz);
 	if (m_pViewOfFile == NULL) {
 		__STD_PRINT(TEXT("Could not map view of file (%d).\n"), GetLastError());
 		CloseHandle(hMapFile);
 		return;
 	}
+}
+
+bool rcFileMap::isValid() {
+	return m_pViewOfFile!=NULL ? true : false;
 }
 rcFileMapReader::~rcFileMapReader()
 {
@@ -80,11 +88,16 @@ rcFileMapReader::rcFileMapReader(char* filename) :rcFileMap()
 HANDLE rcFileMapReader::CreateFileMap(char* filename)
 {
 	m_lpName = filename;
-	HANDLE hMapFile;
-	hMapFile = OpenFileMappingA(
-		FILE_MAP_ALL_ACCESS,   // read/write access
-		FALSE,                 // do not inherit the name
-		filename);               // name of mapping object
+	HANDLE hMapFile = NULL;
+	/*@yulw,2014-4-14.
+	*Keep waiting until the FileMapping Server has started.
+	*/
+	while (!hMapFile) {
+		hMapFile = OpenFileMappingA(
+			FILE_MAP_ALL_ACCESS,   // read/write access
+			FALSE,                 // do not inherit the name
+			filename);               // name of mapping object
+	}
 	if (!hMapFile) {
 		__STD_PRINT("Error in Open Shared Memory.ErrorCode:%d\n", GetLastError());
 		return NULL;
@@ -104,7 +117,7 @@ void rcFileMapReader::read(void* dst, DWORD sizeToRead)
 	//	memcpy(dst, getViewOfFile(), sizeToRead);
 	//	setStatus(true);
 	//}
-		memcpy(dst, getViewOfFile(), sizeToRead);
+	memcpy(dst, getViewOfFile(), sizeToRead);
 }
 
 void rcFileMapReader::lockedRead(void* dst, DWORD sizeToRead)
@@ -138,7 +151,7 @@ HANDLE rcFileMapWriter::CreateFileMap(char* filename)
 		INVALID_HANDLE_VALUE,    // use paging file
 		NULL,                    // default security
 		PAGE_READWRITE,          // read/write access
-		NULL,                       // maximum object size (high-order DWORD)
+		getMaxSizeHigh(),                       // maximum object size (high-order DWORD)
 		getMaxSizeLow(),         // maximum object size (low-order DWORD)
 		filename);               // name of mapping object
 	if (!hMapFile) {
@@ -156,7 +169,7 @@ void rcFileMapWriter::write(void* src, DWORD sizeToWrite)
 	//	setStatus(true);
 	//}
 	//else
-		memcpy(getViewOfFile(), src, sizeToWrite);
+	memcpy(getViewOfFile(), src, sizeToWrite);
 }
 void rcFileMapWriter::lockedWrite(void* src, DWORD sizeToWrite)
 {

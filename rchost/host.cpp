@@ -337,11 +337,13 @@ DWORD HostOperatorAPI::handleProgram(std::string filename, const char op, bool i
 
 std::string HostOperatorAPI::getPath(std::string filename)
 {
-	HOST_MAP_ITER iter = m_mapNamePath.find(filename);
-	if (iter == m_mapNamePath.end())
-		return "";
-	else
-		return iter->second;
+	//HOST_MAP_ITER iter = m_mapNamePath.find(filename);
+	//if (iter == m_mapNamePath.end())
+	//	return "";
+	//else
+	//	return iter->second;
+	std::string ret = m_mapNamePath[filename];
+	return ret;
 }
 std::string HostOperatorAPI::getArg(std::string filename)
 {
@@ -669,7 +671,7 @@ void HostOperator::updateArg(std::string filename, std::string additional)
 
 	if (composite == NULL)
 	{
-		unlock(); 
+		unlock();
 		return;
 	}
 
@@ -685,29 +687,49 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 {
 	/*
 	*Handle miscellaneous conditions for any possible programs here.
-	*/
+	*@yulw,2015-4-15
+	*Structure in the ini configure file:
+	*[ProgramList]
 
+	*[Path]
+
+	*[Args]
+
+	*[Additional]
+
+	*/
+	
 	HOST_MAP_ITER iter = m_mapNameAdditionInfo.find(filename);
 	bool isCurDirNeeded = false;
+
+	//std::string args = getArg(filename);
+
 	if (iter != m_mapNameAdditionInfo.end())
 	{
-		if (strstr(iter->second.c_str(), "-m") != NULL&&op == _CLOSE&&strstr(iter->second.c_str(), "-osgRendering") != NULL
-			&&m_osgHostCli.get()&&m_osgHostCli->isRunning())
+		/*@yulw,2015-4-15
+		*Various ways to control the sync behavior.Here we use the paramters in the [Additional] to control the host and the 
+		*ones in the [Arg] to control the child process.
+		*/
+		//if (strstr(iter->second.c_str(), "-osgRendering") != NULL&&args.find("-memShare") && strstr(iter->second.c_str(), "-osgRendering") != NULL)
+		if (strstr(iter->second.c_str(), "-memShare") != NULL&& strstr(iter->second.c_str(), "-osgRendering") != NULL)
 		{
-			m_osgHostCli->setCancelModeAsynchronous();
-			m_osgHostCli->cancel();
-			m_osgHostCli->cancelCleanup();
-			m_osgHostCli.release();
-		}
-		else if (strstr(iter->second.c_str(), "-s") != NULL&&op == _OPEN&&strstr(iter->second.c_str(), "-osgRendering") != NULL
-			&&m_osgHostSvr.get()==NULL) {
-			/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
-			*/
-			m_osgHostSvr = std::unique_ptr<rcOsgHostServer>(rcfactory::instance()->createOsgHostServer("Slave", 6011));
-			m_osgHostSvr->start();
-			Sleep(1000);
-		}
 
+			if (strstr(iter->second.c_str(), "-m") != NULL&&op == _CLOSE &&m_osgHostCli.get() && m_osgHostCli->isRunning())
+			{
+				m_osgHostCli->setCancelModeAsynchronous();
+				m_osgHostCli->cancel();
+				m_osgHostCli->cancelCleanup();
+				m_osgHostCli.release();
+			}
+			else if (strstr(iter->second.c_str(), "-s") != NULL&&op == _OPEN &&m_osgHostSvr.get() == NULL)
+			{
+				/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
+				*/
+				m_osgHostSvr = std::unique_ptr<rcOsgHostServer>(rcfactory::instance()->createOsgHostServer(_RC_OSG_HOST_MEMSHARE_SLAVE_NAME, _RC_OSG_HOST_SYNC_BROCAST_PORT));
+				m_osgHostSvr->start();
+			}
+
+		}
 		if (strstr(iter->second.c_str(), "-curDir") != NULL) {
 			isCurDirNeeded = true;
 		}
@@ -717,30 +739,36 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 
 	}
 
-	DWORD result=HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
-	__STD_PRINT("Opening Result:%d\n", result);
+	if (strstr(iter->second.c_str(), "-s") != NULL)
+		Sleep(500);
+
+	DWORD result = HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
+
 	//add more operations here when more programms are geeting managed
 	if (iter != m_mapNameAdditionInfo.end())
 	{
-		if (strstr(iter->second.c_str(), "-s") != NULL&&op == _CLOSE&&strstr(iter->second.c_str(), "-osgRendering") != NULL
-			&&m_osgHostSvr.get()&&m_osgHostSvr->isRunning()) 
+
+		//if (args.find("-memShare") && strstr(iter->second.c_str(), "-osgRendering") != NULL)
+		if (strstr(iter->second.c_str(), "-memShare") != NULL&& strstr(iter->second.c_str(), "-osgRendering") != NULL)
 		{
-			m_osgHostSvr->setCancelModeAsynchronous();
-			m_osgHostSvr->cancel();
-			m_osgHostSvr->cancelCleanup();
-			m_osgHostSvr.release(); 
+
+			if (strstr(iter->second.c_str(), "-s") != NULL&&op == _CLOSE &&m_osgHostSvr.get() && m_osgHostSvr->isRunning())
+			{
+				m_osgHostSvr->setCancelModeAsynchronous();
+				m_osgHostSvr->cancel();
+				m_osgHostSvr->cancelCleanup();
+				m_osgHostSvr.release();
+			}
+			else if (strstr(iter->second.c_str(), "-m") != NULL&&op == _OPEN &&m_osgHostCli.get() == NULL)
+			{
+				/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
+				*/
+				//Make sure the memshare is ready.
+				m_osgHostCli = std::unique_ptr<rcOsgHostClient>(rcfactory::instance()->createOsgHostClient(_RC_OSG_HOST_MEMSHARE_MASTER_NAME, _RC_OSG_HOST_SYNC_BROCAST_PORT));
+				m_osgHostCli->start();
+			}
 		}
-		else if (strstr(iter->second.c_str(), "-m") != NULL&&op == _OPEN&&strstr(iter->second.c_str(), "-osgRendering") != NULL
-			&&m_osgHostCli.get()==NULL )
-		{
-			/*@yulw,2015-4-10, open memry sharing before slave osgRendring apps start.
-			*/
-			//Make sure the memshare is ready.
-			Sleep(500);
-			m_osgHostCli = std::unique_ptr<rcOsgHostClient>(rcfactory::instance()->createOsgHostClient("Master", 6011));
-			m_osgHostCli->start();
-		}
-		else if (strstr(iter->second.c_str(), "-m") != NULL&&strstr(iter->second.c_str(), "-osgRendering")==NULL)
+		else if (strstr(iter->second.c_str(), "-m") != NULL)
 		{
 
 			if (m_pipeBrocaster.get() == NULL)

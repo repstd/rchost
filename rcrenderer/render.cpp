@@ -20,13 +20,18 @@ int main(int argc, char* argv[])
 	arguments.getApplicationUsage()->addCommandLineOption("-f <float>", "Field of view of camera");
 	arguments.getApplicationUsage()->addCommandLineOption("-k <n>", "Index of Camera. -k determins the parallax of this camera");
 	arguments.getApplicationUsage()->addCommandLineOption("-c <n>", "A coefficient to adjust the parallax.");
+	arguments.getApplicationUsage()->addCommandLineOption("-r <n>", "A coefficient to determine the rotate_angle of the camera.");
 	arguments.getApplicationUsage()->addCommandLineOption("-w <n>", "Width of the view");
 	arguments.getApplicationUsage()->addCommandLineOption("-h <n>", "Height of the view");
 	arguments.getApplicationUsage()->addCommandLineOption("-x <n>", "offset_x of the view");
 	arguments.getApplicationUsage()->addCommandLineOption("-y <n>", "offset_y of the view");
+	arguments.getApplicationUsage()->addCommandLineOption("-memShare <n>", "offset_y of the view");
+	arguments.getApplicationUsage()->addCommandLineOption("-keyStone <n>", "KeyStone FileName");
 	TYPE viewMode;
 	int width=1280, height=800, offset_x=0, offset_y=0;
-	int cam_no, para_c;
+	int cam_no, para_c, rotate_angle;
+	int isMemShare=false;
+	std::string keyStoneFilename;
 	if (arguments.find("-k")==-1) {
 		std::cout << "The camera index is missing.!" << std::endl;
 		return 1;
@@ -39,10 +44,26 @@ int main(int argc, char* argv[])
 	}
 	while (arguments.read("-c", para_c)){}
 
-	while (arguments.read("-m")) 
+	if (arguments.find("-r")==-1) {
+		std::cout << "The parameter for rotate_angle of the camera is missing." << std::endl;
+		return 1;
+	}
+	while (arguments.read("-r", rotate_angle)){}
+
+	if (arguments.find("-keyStone")==-1) {
+		std::cout << "KeyStone Filename is missing." << std::endl;
+		return 1;
+	}
+	while (arguments.read("-keyStone", keyStoneFilename)){}
+
+	if (arguments.find("-m")!=-1) {
 		viewMode = _MASTER;
-	while (arguments.read("-s")) 
+	}
+	if (arguments.find("-s")!=-1) {
 		viewMode = _SLAVE;
+	}
+	if (arguments.find("-memShare") != -1)
+		isMemShare = true;
 	while (arguments.read("-w", width)){}
 	while (arguments.read("-h", height)){}
 	while (arguments.read("-x", offset_x)){}
@@ -68,8 +89,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	if (arguments.argc() <= 1)
-	{
+	if (arguments.argc() <= 1){
 		arguments.getApplicationUsage()->write(std::cout, osg::ApplicationUsage::COMMAND_LINE_OPTION);
 		return 1;
 	}
@@ -80,24 +100,36 @@ int main(int argc, char* argv[])
 	switch (viewMode)
 	{
 	case _MASTER:
-		viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule());
+		if (isMemShare)
+			viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule(_RC_OSG_HOST_MEMSHARE_MASTER_NAME));
+		else
+			viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule(_RC_OSG_HOST_SYNC_BROCAST_PORT));
 		break;
 	case _SLAVE:
-		viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncSlaveModule());
+		if (isMemShare)
+			viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncSlaveModule(_RC_OSG_HOST_MEMSHARE_SLAVE_NAME));
+		else
+			viewer = new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncSlaveModule(_RC_OSG_HOST_SYNC_BROCAST_PORT));
 		break;
 	default:
+		std::cout << "exit without mode specified." << std::endl;
+		std::cout << width << std::endl;
 		return 1;
 	}
-	viewer->setupRenderer(width, height,NULL);
 	viewer->setCameraManipulator(new osgGA::TerrainManipulator());
 	// add the stats handler
 	viewer->addEventHandler(new osgViewer::StatsHandler);
 	viewer->addEventHandler(new  osgViewer::HelpHandler);
+	viewer->addEventHandler(new rcEventHandler);
 	// add the state manipulator
 	viewer->addEventHandler(new osgGA::StateSetManipulator(viewer->getCamera()->getOrCreateStateSet()));
+
+	viewer->setupRenderer(width, height, keyStoneFilename.c_str());
 	ParallaxPara& p = viewer->getParaParameter();
 	p._cam_no = cam_no;
 	p._para_c = para_c;
+	p._rotate_angle =rotate_angle;
+
 	return viewer->run();
 }
 

@@ -11,6 +11,8 @@ public:
 
 class rcFileMap
 {
+public:
+	bool isValid();
 protected:
 	rcFileMap();
 	virtual ~rcFileMap();

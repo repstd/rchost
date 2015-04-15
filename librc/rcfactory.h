@@ -7,7 +7,7 @@
 #include "rcmemshare.h"
 #include "rcpipe.h"
 #include "rcosg.h"
-#include <unordered_map>
+#include <map>
 bool isReady();
 void setStatus(bool status);
 enum PROTOCOL
@@ -35,7 +35,7 @@ public:
 private:
 	rcfactory();
 	~rcfactory();
-	std::unordered_map<int, int> m_mapUsedPort;
+	std::map<int, int> m_mapUsedPort;
 	std::unique_ptr<rcmutex_ext> m_mutex;
 };
 

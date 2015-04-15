@@ -15,3 +15,4 @@
 #include <Winsock2.h>
 #include "Winuser.h"
 #include "rc_common.h"
+#include <stdlib.h>

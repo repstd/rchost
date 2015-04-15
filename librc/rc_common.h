@@ -40,7 +40,11 @@
 #define _STD_PRINT_TIME_PLAIN(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define _RC_PIPE_NAME "\\\\.\\pipe\\rcpipe" 
 #define _RC_PIPE_BROADCAST_PORT 8000
-
+#define _RC_OSG_MAX_EVENT_SIZE 40960
+#define _RC_MEMSHARE_DEFAULT_SIZE 65535
+#define _RC_OSG_HOST_MEMSHARE_MASTER_NAME	"MemShareMaster"
+#define _RC_OSG_HOST_MEMSHARE_SLAVE_NAME	"MemShareSlave"
+#define _RC_OSG_HOST_SYNC_BROCAST_PORT	6011
 enum EVENT
 {
 	_OPEN,
@@ -91,7 +95,8 @@ typedef struct _SYNC_OSG_MSG
 	double _matrix[16];
 	double _modelView[16];
 	double _projection[16];
-	char _event[512];
+	bool _isExit;
+	char _event[_RC_OSG_MAX_EVENT_SIZE];
 } SYNC_OSG_MSG;
 
 struct cmp

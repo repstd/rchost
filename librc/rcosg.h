@@ -12,7 +12,6 @@ public:
 	rcosg();
 	~rcosg();
 };
-
 class rcOsgHostClient:public THREAD
 {
 public:	
