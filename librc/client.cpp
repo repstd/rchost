@@ -180,8 +180,6 @@ int tcpClient::initSocket(int port, ULONG S_addr)
 	assert(m_socket >= 0);
 	m_addrSvr.sin_family = AF_INET;
 	m_addrSvr.sin_port = htons((u_short)m_port);
-	assert(serverAddr!=NULL);
-	
 	if (connect(m_socket, (sockaddr *)&m_addrSvr, sizeof(m_addrSvr)) == SOCKET_ERROR)
 	{
 		printf("connect error !");

@@ -25,12 +25,13 @@ rcrenderer::rcrenderer(osg::Node* node, rcSyncImp* syncImp) : osgViewer::Viewer(
 		m_imp = std::unique_ptr<rcSyncImp>(syncImp);
 	m_isExit = false;
 }
+#define _RC_RENDER_TEST
 void rcrenderer::setupRenderer(int width, int height, const char* keystoneFilename)
 {
 #ifdef _RC_RENDER_TEST
 	osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits();
-	traits->x = 0;
-	traits->y = 0;
+	traits->x = 50;
+	traits->y = 50;
 	traits->width = width;
 	traits->height = height;
 	traits->windowDecoration = true;

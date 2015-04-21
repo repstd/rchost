@@ -768,7 +768,7 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 				m_osgHostCli->start();
 			}
 		}
-		else if (strstr(iter->second.c_str(), "-m") != NULL)
+		else if (strstr(iter->second.c_str(), "-m") != NULL&&strstr(iter->second.c_str(), "-osgRendering")== NULL)
 		{
 
 			if (m_pipeBrocaster.get() == NULL)

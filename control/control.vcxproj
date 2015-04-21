@@ -20,7 +20,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v100</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -41,12 +41,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(SolutionDir)librc\;$(CUR_OSG)\include;$(BOOST);$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)$(Configuration);$(CUR_OSG)\lib;$(BOOST)\libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(Configuration)\intermediate\</IntDir>
-    <IncludePath>$(SolutionDir)librc\;$(OSG_ROOT_32)\include;$(BOOST);$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)$(Configuration);$(OSG_ROOT_32)\lib;$(BOOST)\libs;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)librc\;$(CUR_OSG)\include;$(BOOST);$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)$(Configuration);$(CUR_OSG)\lib;$(BOOST)\libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -59,6 +61,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>OpenThreadsd.lib;ws2_32.lib;librc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

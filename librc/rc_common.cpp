@@ -36,7 +36,7 @@ void writeArgs(_MSG* msg, const char* arg)
 	assert(msg != NULL);
 	char* temp = const_cast<char*>(arg);
 	int curSize = strlen(temp) + 1;
-	assert(msg->_pBuf + _size + curSize != NULL);
+	assert(msg->_pBuf + msg->_size + curSize != NULL);
 	memcpy(msg->_pBuf + msg->_size, temp, curSize*sizeof(char));
 	msg->_size += curSize;
 	msg->_pSize[++(msg->_argc)] = msg->_size;

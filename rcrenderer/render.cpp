@@ -8,6 +8,9 @@
 #include <osgDB/ReadFile>
 #include <osgGA/TerrainManipulator>
 #include <osgGA/StateSetManipulator>
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/ExampleResources>
+
 int main(int argc, char* argv[])
 {
 	osg::ArgumentParser arguments(&argc, argv);
@@ -94,9 +97,14 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+
+	osg::ref_ptr<rcrenderer> viewer;
 	// load model.
 	osg::ref_ptr<osg::Node> rootnode = osgDB::readNodeFiles(arguments);
-	osg::ref_ptr<rcrenderer> viewer;
+
+	// load an earth file, and support all or our example command-line options
+	// and earth file <external> tags    
+	//osg::ref_ptr<osg::Node> rootnode = osgEarth::Util::MapNodeHelper().load(arguments, viewer.get());
 	switch (viewMode)
 	{
 	case _MASTER:
@@ -116,6 +124,7 @@ int main(int argc, char* argv[])
 		std::cout << width << std::endl;
 		return 1;
 	}
+
 	viewer->setCameraManipulator(new osgGA::TerrainManipulator());
 	// add the stats handler
 	viewer->addEventHandler(new osgViewer::StatsHandler);
