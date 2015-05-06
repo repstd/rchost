@@ -2,28 +2,52 @@
 #include "rcrenderer.h"
 #include <vector>
 #include <string>
-
-
-rcrenderer::rcrenderer() :osgViewer::Viewer() { }
-
-rcrenderer::rcrenderer(const rcrenderer& copy, const osg::CopyOp& op)
-: osgViewer::Viewer(copy, op) {
-	m_root = new osg::Group;
-	m_isExit = false;
-}
+#include <stdlib.h>
+#include <string>
+#include <exception>
 rcrenderer::~rcrenderer() {
-	if (m_root.valid())
-		m_root.release();
 	m_isExit = true;
+	m_viewer.release();
 }
 
-rcrenderer::rcrenderer(osg::Node* node, rcSyncImp* syncImp) : osgViewer::Viewer() {
-	m_root = new osg::Group;
+rcrenderer::rcrenderer(int width, int height, char* keystoneFileName) :
+rcApp(), m_width(width), m_height(height), m_keystoneFileName(keystoneFileName), m_isExit(false)
+{
+	m_viewer = new osgViewer::Viewer();
+	m_root = new osg::MatrixTransform;
+}
+rcrenderer::rcrenderer(rcSyncImp* syncImp, int width, int height, char* keystoneFileName) :
+rcApp(), m_width(width), m_height(height), m_keystoneFileName(keystoneFileName), m_isExit(false)
+{
+	m_viewer = new osgViewer::Viewer();
+	m_root = new osg::MatrixTransform;
+	if (syncImp != NULL)
+		m_imp = std::unique_ptr<rcSyncImp>(syncImp);
+}
+rcrenderer::rcrenderer(osg::Node* node, rcSyncImp* syncImp, int width, int height, char* keystoneFileName) :
+rcApp(), m_width(width), m_height(height), m_keystoneFileName(keystoneFileName), m_isExit(false)
+{
+	m_viewer = new osgViewer::Viewer();
+	m_root = new osg::MatrixTransform;
 	if (node != NULL)
 		m_root->addChild(node);
 	if (syncImp != NULL)
 		m_imp = std::unique_ptr<rcSyncImp>(syncImp);
-	m_isExit = false;
+}
+osgViewer::Viewer* rcrenderer::getViewer()
+{
+	return m_viewer.get();
+}
+void rcrenderer::setup()
+{
+	setupRenderer(m_width, m_height, m_keystoneFileName);
+	getRootNode()->setName("RcRootNode");
+}
+osg::Node* rcrenderer::getRootNode() {
+	return m_root.get();
+}
+bool rcrenderer::getStatus() {
+	return m_isExit;
 }
 #define _RC_RENDER_TEST
 void rcrenderer::setupRenderer(int width, int height, const char* keystoneFilename)
@@ -54,94 +78,176 @@ void rcrenderer::setupRenderer(int width, int height, const char* keystoneFilena
 		gc->setClearColor(osg::Vec4f(0.2f, 0.2f, 0.6f, 1.0f));
 		gc->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
-	getCamera()->setViewport(0, 0, traits->width, traits->height);
-	getCamera()->setGraphicsContext(gc.get());
+	m_viewer->getCamera()->setViewport(0, 0, traits->width, traits->height);
+	m_viewer->getCamera()->setGraphicsContext(gc.get());
 	osg::DisplaySettings* ds = osg::DisplaySettings::instance();
 
 	std::vector<std::string> keystones;
 	keystones.push_back(keystoneFilename);
 	ds->setKeystoneFileNames(keystones);
-	setSceneData(m_root.get());
-	osg::Camera* maniCamera = dynamic_cast<osg::Camera*>(getCameraManipulator());
-	osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keystoneFilename);
-	ds->setKeystoneHint(true);
-	bool keystonesLoaded = true;
-	ds->getKeystones().push_back(keystone.get());
-	if (maniCamera)
-		assignStereoOrKeystoneToCamera(maniCamera, ds);
-	else
-		assignStereoOrKeystoneToCamera(getCamera(), ds);
+	m_viewer->setSceneData(m_root.get());
+	osg::Camera* maniCamera = dynamic_cast<osg::Camera*>(m_viewer->getCameraManipulator());
+	//apply keystone calibration
+	if (keystoneFilename)
+	{
+		osg::ref_ptr<osgViewer::Keystone> keystone = osgDB::readFile<osgViewer::Keystone>(keystoneFilename);
+		ds->setKeystoneHint(true);
+		bool keystonesLoaded = true;
+		ds->getKeystones().push_back(keystone.get());
+		if (maniCamera)
+			m_viewer->assignStereoOrKeystoneToCamera(maniCamera, ds);
+		else
+			m_viewer->assignStereoOrKeystoneToCamera(m_viewer->getCamera(), ds);
+	}
 
 	double fovy, aspectRatio, zNear, zFar;
-	getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
+	m_viewer->getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
 	double newAspectRatio = double(traits->width) / double(traits->height);
 	double aspectRatioChange = newAspectRatio / aspectRatio;
 	if (aspectRatioChange != 1.0) {
-		getCamera()->getProjectionMatrix() *= osg::Matrix::scale(1.0 / aspectRatioChange, 1.0, 1.0);
+		m_viewer->getCamera()->getProjectionMatrix() *= osg::Matrix::scale(1.0 / aspectRatioChange, 1.0, 1.0);
 		float camera_fov = -1.0f;
 		if (camera_fov > 0.0f)
 		{
 			double fovy, aspectRatio, zNear, zFar;
-			getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
+			m_viewer->getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
 
 			double original_fov = atan(tan(osg::DegreesToRadians(fovy)*0.5)*aspectRatio)*2.0;
 
 			fovy = atan(tan(osg::DegreesToRadians(camera_fov)*0.5) / aspectRatio)*2.0;
-			getCamera()->setProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
+			m_viewer->getCamera()->setProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
 
-			getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
+			m_viewer->getCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
 			original_fov = atan(tan(osg::DegreesToRadians(fovy)*0.5)*aspectRatio)*2.0;
 		}
 	}
+	m_viewer->addEventHandler(new rcEventHandler(this));
 }
+void rcrenderer::setSyncImp(rcSyncImp* syncImp)
+{
+	m_imp.reset(syncImp);
+}
+std::ostream& operator<<(std::ostream& out, osg::Matrixd& mat)
+{
+	double* p = mat.ptr();
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+			out << p[4 * i + j] << " ";
+		out << std::endl;
+	}
+	return out;
+}
+class TraverseCallback : public osg::NodeCallback
+{
+public:
+	TraverseCallback(rcrenderer* render)
+	{
+		m_render.reset(render);
+	}
+	~TraverseCallback()
+	{
+		m_render.reset();
+	}
+	void adjustPara(osg::MatrixTransform* transform)
+	{
+		ParallaxPara& p = m_render->getParaParameter();
+		//osg::Matrix rotChange= osg::Matrix::rotate(osg::DegreesToRadians(p._rotate_angle), 0.0f, 0.0f, 1.0f);
+		const osg::BoundingSphere& bs = m_render->getRootNode()->getBound();
+		osg::Matrix mat = transform->getMatrix();
+		osg::Vec3d trans, scale;
+		osg::Matrixd change;
+		osg::Quat rot, so;
+		mat.decompose(trans, rot, scale, so);
+		trans += osg::Vec3d(p._cam_no*p._para_c, 0, 0);
+		change.makeTranslate(trans);
+		mat = mat*change;
+
+		double viewDistance = (mat.getTrans() - bs.center()).length();
+		osg::Matrixd para
+			(
+			1.0, 0.0, 0.0, 0.0,
+			0.0, 1.0, 0.0, 0.0,
+			p._cam_no*p._para_c / viewDistance, 0, 1.0, 0.0,
+			0.0, 0.0, 0.0, 1.0
+			);
+		mat = para*mat;
+		transform->setMatrix(mat);
+	}
+	virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+	{
+		osg::MatrixTransform* trans =
+			static_cast<osg::MatrixTransform*>(node);
+		std::cout << node->getName() << std::endl;
+		TYPE type = m_render->getImp()->getType();
+		if (trans&&type == _SLAVE) {
+			//adjustPara(trans);
+		}
+		traverse(node, nv);
+	}
+	std::unique_ptr<rcrenderer> m_render;
+};
+class rcUpdate :public osg::NodeVisitor
+{
+public:
+	rcUpdate(rcrenderer* render)
+	{
+		m_render = render;
+		setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+	}
+	~rcUpdate() {
+		m_render = nullptr;
+	}
+	void apply(osg::Node& node)
+	{
+		if (strstr(node.getName().c_str(), "rcTileMapScene"))
+			node.setUpdateCallback(new TraverseCallback(m_render));
+		traverse(node);
+	}
+private:
+	rcrenderer* m_render;
+};
 rcSyncImp* rcrenderer::getImp() {
 	return m_imp.get();
 }
-
-bool rcrenderer::getStatus()
-{
-	return m_isExit;
-}
 int rcrenderer::run()
 {
-	realize();
+	osg::ref_ptr<osgViewer::Viewer> viewer = getViewer();
+	viewer->realize();
 	rcSyncImp* syncModule = getImp();
-	while (!done())
+	//rcUpdate rcUpdateVisitor(this);
+	//getRootNode()->accept(rcUpdateVisitor);
+	while (!viewer->done())
 	{
-		advance();
+		viewer->advance();
 		syncModule->sync(this);
 		adjustPara();
-		frame();
-		eventTraversal();
-		updateTraversal();
-		renderingTraversals();
+		viewer->frame();
+		viewer->eventTraversal();
+		viewer->updateTraversal();
+		viewer->renderingTraversals();
 	}
 	m_isExit = true;
 	syncModule->sync(this);
 	return 0;
 }
 
-osg::ref_ptr<osg::Node> rcrenderer::getNode()
-{
-	return m_root.get();
-}
 void rcrenderer::adjustPara()
 {
+	osg::ref_ptr<osgViewer::Viewer> viewer = getViewer();
 	ParallaxPara& p = getParaParameter();
 	//Specified algorithm to adjust the parallax.
 	//TODO:
-	const osg::BoundingSphere& bs = getNode()->getBound();
-	osg::Matrix manipulator(getCameraManipulator()->getMatrix());
-	osg::Matrix modelView(getCamera()->getViewMatrix());
-	osg::Matrix projection(getCamera()->getProjectionMatrix());
+	const osg::BoundingSphere& bs = getRootNode()->getBound();
+	osg::Matrix manipulator(viewer->getCameraManipulator()->getMatrix());
+	osg::Matrix modelView(viewer->getCamera()->getViewMatrix());
+	osg::Matrix projection(viewer->getCamera()->getProjectionMatrix());
 	osg::Matrix rot = osg::Matrix::rotate(osg::DegreesToRadians(p._rotate_angle), 0.0f, 0.0f, 1.0f);
-
-	osg::Matrix newView = rot*modelView;
+	osg::Matrix newView;
 	newView.makeTranslate(p._cam_no*p._para_c, 0, 0);
-	newView = modelView*newView;
-
+	newView = rot*manipulator*newView;
 	double viewDistance = (newView.getTrans() - bs.center()).length();
-	osg::Matrixd para 
+	osg::Matrixd para
 		(
 		1.0, 0.0, 0.0, 0.0,
 		0.0, 1.0, 0.0, 0.0,
@@ -150,51 +256,50 @@ void rcrenderer::adjustPara()
 		);
 
 	if (getImp()->getType() == _SLAVE) {
-		//osg::Matrix invMat = osg::Matrix::inverse(manipulator);
-		getCameraManipulator()->setByMatrix(manipulator*rot);
-		//getCamera()->setViewMatrix(newView);
+		viewer->getCameraManipulator()->setByMatrix(newView);
+		viewer->getCamera()->setProjectionMatrix(para*projection);
 	}
-	getCamera()->setProjectionMatrix(para*projection);
 }
+
 ParallaxPara& rcrenderer::getParaParameter() {
 	return m_para;
 }
 
-rcEventHandler::rcEventHandler() :osgGA::GUIEventHandler()
+rcEventHandler::rcEventHandler(rcrenderer* render) :osgGA::GUIEventHandler()
 {
-
+	m_render.reset(render);
 }
-rcEventHandler::~rcEventHandler() { }
+rcEventHandler::~rcEventHandler()
+{
+	if (m_render.get())
+		m_render.reset();
+}
 bool rcEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us)
 {
-	osg::ref_ptr<osgViewer::Viewer> pViewer = dynamic_cast<osgViewer::Viewer*>(&us);
-	if (!pViewer.valid())
+	if (!m_render.get())
 		return false;
-	osg::ref_ptr<rcrenderer> pRender = reinterpret_cast<rcrenderer*>(pViewer.get());
-	if (!pRender.valid())
-		return false;
-	ParallaxPara& p = pRender->getParaParameter();
+	ParallaxPara& p = m_render->getParaParameter();
 	switch (ea.getEventType())
 	{
 	case osgGA::GUIEventAdapter::KEYDOWN:
 	{
-			switch (ea.getKey())
-			{
-			case osgGA::GUIEventAdapter::KEY_Left:
-				p._para_c += 0.5;
-				break;
-			case osgGA::GUIEventAdapter::KEY_Right:
-				p._para_c -= 0.5;
-				break;
-			case osgGA::GUIEventAdapter::KEY_Up:
-				p._rotate_angle += 0.1;
-				break;
-			case osgGA::GUIEventAdapter::KEY_Down:
-				p._rotate_angle -= 0.1;
-				break;
-			default:
-				break;
-			}
+											switch (ea.getKey())
+											{
+											case osgGA::GUIEventAdapter::KEY_L:
+												p._para_c += 1.0;
+												break;
+											case osgGA::GUIEventAdapter::KEY_J:
+												p._para_c -= 1.0;
+												break;
+											case osgGA::GUIEventAdapter::KEY_I:
+												p._rotate_angle += 1.0;
+												break;
+											case osgGA::GUIEventAdapter::KEY_K:
+												p._rotate_angle -= 1.0;
+												break;
+											default:
+												break;
+											}
 	}
 		break;
 	default:

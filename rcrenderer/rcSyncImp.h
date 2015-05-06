@@ -7,6 +7,7 @@
 #include <osg/MatrixTransform>
 #include "rcSyncImp.h"
 #include "rcfactory.h"
+#include "rcapp.h"
 enum TYPE
 {
 	_MASTER=0,
@@ -73,7 +74,7 @@ class rcSyncImp
 public:
 	rcSyncImp(){}
 	virtual ~rcSyncImp(){}
-	virtual void sync(osgViewer::Viewer* viewer) = 0;
+	virtual void sync(rcApp*) = 0;
 	void setType(TYPE t);
 	TYPE getType();
 	TYPE m_type;
@@ -84,29 +85,61 @@ class rcOsgMasterImp :public rcSyncImp
 public:
 	virtual ~rcOsgMasterImp();
 	void encodeMsg(osgViewer::Viewer* viewer, void* msg);
-	void sync(osgViewer::Viewer* viewer);
+	void sync(rcApp* renderer);
 	rcMsgerImp* getImp();
 protected:
 	rcOsgMasterImp(rcMsgerImp* imp);
 private:
 	std::unique_ptr<rcMsgerImp> m_imp;
 };
-class rcOsgSlaveImp :public rcSyncImp
+
+class rcOsgSlaveImp :public rcSyncImp,public osg::NodeCallback
 {
 	friend rcSyncImpFactory;
 public:
 	virtual ~rcOsgSlaveImp();
 	void decodeMsg(osgViewer::Viewer* viewer, void* msg);
-	virtual void sync(osgViewer::Viewer* viewer);
+	virtual void sync(rcApp* renderer);
 	rcMsgerImp* getImp();
+	void setApp(rcApp*);
 protected:
 	rcOsgSlaveImp(rcMsgerImp* imp);
-	/*
-	*@yulw,2015-4-14.An alternative to receive message from the master directly via the sockets.
-	*/
+private:
+	std::unique_ptr<rcApp> m_app;
+	std::unique_ptr<rcMsgerImp> m_imp;
+};
+
+class rcOsgMasterTraverseImp :public rcSyncImp,public osg::NodeCallback
+{
+	friend rcSyncImpFactory;
+public:
+	virtual ~rcOsgMasterTraverseImp();
+	virtual void sync(rcApp* renderer);
+
+	void encode(osgViewer::Viewer* viewer, osg::Node* node,void* msg);
+	rcMsgerImp* getImp();
+	void setApp(rcApp*);
+protected:
+	rcOsgMasterTraverseImp(rcMsgerImp* imp,char* nodeName);
+private:
+	std::unique_ptr<rcApp> m_app;
+	char* m_targetNodeName;
+};
+
+class rcOsgSlaveTraverseImp :public rcSyncImp
+{
+	friend rcSyncImpFactory;
+public:
+	virtual ~rcOsgSlaveTraverseImp();
+	virtual void sync(rcApp* renderer);
+	void decodeMsg(osgViewer::Viewer* viewer, osg::Node* node,void* msg);
+	rcMsgerImp* getImp();
+protected:
+	rcOsgSlaveTraverseImp(rcMsgerImp* imp,char* nodeName);
 private:
 	std::unique_ptr<rcMsgerImp> m_imp;
 };
+
 class rcSyncImpFactory
 {
 public:

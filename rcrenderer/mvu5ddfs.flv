@@ -6,7 +6,6 @@
 #include "rcSyncImp.h"
 #include "rcapp.h"
 #include "rcModelScene.h"
-#include "rcTiledMapScene.h"
 #include <osgDB/readFile>
 int main(int argc, char* argv[])
 {
@@ -31,7 +30,6 @@ int main(int argc, char* argv[])
 	int width=1280, height=800, offset_x=0, offset_y=0;
 	int cam_no, para_c, rotate_angle;
 	int isMemShare=false;
-	int isEarth=false;
 	std::string keyStoneFilename;
 	if (arguments.find("-k")==-1) {
 		std::cout << "The camera index is missing.!" << std::endl;
@@ -65,10 +63,6 @@ int main(int argc, char* argv[])
 	}
 	if (arguments.find("-memShare") != -1)
 		isMemShare = true;
-	while (arguments.read("-memShare")){}
-	if (arguments.find("-earth") != -1)
-		isEarth= true;
-	while (arguments.read("-earth")){}
 	while (arguments.read("-w", width)){}
 	while (arguments.read("-h", height)){}
 	while (arguments.read("-x", offset_x)){}
@@ -100,14 +94,14 @@ int main(int argc, char* argv[])
 	}
 
 
-	std::shared_ptr<rcrenderer> viewer;
+	std::unique_ptr<rcrenderer> viewer;
 #if 0 
 	osg::ref_ptr<osg::Node> rootnode = osgDB::readNodeFiles(arguments);
 	switch (viewMode)
 	{
 	case _MASTER:
 		if (isMemShare)
-			viewer=std::shared_ptr<rcrenderer>(new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule(_RC_OSG_HOST_MEMSHARE_MASTER_NAME),width, height, const_cast<char*>(keyStoneFilename.c_str())));
+			viewer.reset(new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule(_RC_OSG_HOST_MEMSHARE_MASTER_NAME),width, height, const_cast<char*>(keyStoneFilename.c_str())));
 		else
 			viewer.reset(new rcrenderer(rootnode.get(), rcSyncImpFactory::instance()->createRcSyncMasterModule(_RC_OSG_HOST_SYNC_BROCAST_PORT),width, height, const_cast<char*>(keyStoneFilename.c_str())));
 		break;
@@ -144,11 +138,8 @@ int main(int argc, char* argv[])
 		std::cout << width << std::endl;
 		return 1;
 	}
-	rcScene* model;
-	if (isEarth)
-		model = new rcTiledMapScene(viewer.get(),arguments);
-	else
-		model = new rcModelScene(viewer.get(),arguments);
+	//rcScene* model = new rcModelScene(viewer.get(),arguments);
+	rcScene* model = new rcTiledMapScene(viewer.get(),arguments);
 	viewer->setup();
 	model->active();
 #endif
@@ -156,7 +147,6 @@ int main(int argc, char* argv[])
 	p._cam_no = cam_no;
 	p._para_c = para_c;
 	p._rotate_angle =rotate_angle;
-	viewer->run();
-	return 0;
+	return viewer->run();
 }
 

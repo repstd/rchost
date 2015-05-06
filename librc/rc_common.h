@@ -95,6 +95,7 @@ typedef struct _SYNC_OSG_MSG
 	double _matrix[16];
 	double _modelView[16];
 	double _projection[16];
+	double _transform[16];
 	bool _isExit;
 	char _event[_RC_OSG_MAX_EVENT_SIZE];
 } SYNC_OSG_MSG;

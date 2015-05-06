@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "rcSyncImp.h"
 #include "rcrenderer.h"
+#include "osgViewer/viewer" 
+
 rcMemShareReader::rcMemShareReader(char* filemappingName) :rcMsgerImp() {
 	m_memShareReader = std::unique_ptr<rcFileMapReader>(rcfactory::instance()->createFileMapReader(filemappingName));
 }
@@ -63,7 +65,8 @@ rcSocketWriter::rcSocketWriter(int port) :rcMsgerImp()
 	m_socketWriter= std::unique_ptr<udpClient>(rcfactory::instance()->createUdpClient(port,NULL));
 }
 
-rcSocketWriter::~rcSocketWriter() {
+rcSocketWriter::~rcSocketWriter() 
+{
 
 }
 
@@ -153,15 +156,17 @@ void rcOsgMasterImp::encodeMsg(osgViewer::Viewer* viewer, void* msg)
 	memcpy(pMsg->_event, temp, cnt*stride);
 	delete temp;
 }
-void rcOsgMasterImp::sync(osgViewer::Viewer* viewer) {
+void rcOsgMasterImp::sync(rcApp* renderer)
+{
 	/*@yulw,2014-4-14. 
 	*We should skip the sync process before the FileMapping is Ready in case of crash.
 	*/
+	osgViewer::Viewer* viewer = renderer->getViewer();
 	rcMsgerImp* imp = getImp();
 	if (!imp->isValid())
 		return;
 	SYNC_OSG_MSG msg;
-	msg._isExit = dynamic_cast<rcrenderer*>(viewer)->getStatus();
+	msg._isExit = renderer->getStatus();
 	encodeMsg(viewer, &msg);
 	imp->write(&msg, sizeof(msg));
 }
@@ -206,19 +211,19 @@ void rcOsgSlaveImp::decodeMsg(osgViewer::Viewer* viewer, void* msg)
 	viewer->getEventQueue()->appendEvents(evts);
 }
 
-void rcOsgSlaveImp::sync(osgViewer::Viewer* viewer)
+void rcOsgSlaveImp::sync(rcApp* renderer)
 {
 	/*@yulw,2014-4-14. 
 	*We should skip the sync process before the FileMapping is Ready in case of crash.
 	*/
 	rcMsgerImp* imp = getImp();
+	osgViewer::Viewer* viewer = renderer->getViewer();
 	if (!imp->isValid())
 		return;
 	SYNC_OSG_MSG msg;
 	imp->read(&msg, sizeof(SYNC_OSG_MSG));
 	if (msg._isExit)
 		exit(0);
-
 	decodeMsg(viewer, &msg);
 }
 

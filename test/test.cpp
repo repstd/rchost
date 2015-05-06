@@ -174,6 +174,19 @@ void testOsgSyncMsg()
 #define MODE 1
 int _tmain(int argc, _TCHAR* argv[])
 {
-	testOsgSyncMsg();
+	//testOsgSyncMsg();
+	osg::Matrixd mat;
+	mat.makeTranslate(10, 0, 0);
+	osg::Matrix rotChange= osg::Matrix::rotate(osg::DegreesToRadians(-10.0), 0.0f, 0.0f, 1.0f);
+	mat.makeRotate(osg::DegreesToRadians(10.0), 0.0f, 0.0f, 1.0f);
+
+	//mat.makeRotate(osg::DegreesToRadians(-10.0), 0.0f, 0.0f, 1.0f);
+	mat = rotChange*mat;
+
+	osg::Vec3d trans, scale;
+	osg::Quat rot, so;
+	mat.decompose(trans, rot, scale, so);
+	trans;
+	mat.makeTranslate(20, 0, 0);
 	return 0;
 }

@@ -30,6 +30,15 @@
     <ClInclude Include="rcSyncImp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rcapp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rcModelScene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rcTiledMapScene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -42,6 +51,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rcModelScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rcTiledMapScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
