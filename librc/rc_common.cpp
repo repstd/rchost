@@ -59,3 +59,23 @@ void clear(_MSG* msg)
 	msg->_size = 0;
 	msg->_argc = 0;
 }
+void parseMsg(char* inMsg,_MSG& outMsg)
+{
+	char* delimeter = "#";
+	char* pd= strstr(inMsg, delimeter);
+	if (pd) 
+	{
+		*pd = '\0';
+		sprintf(outMsg._filename, inMsg);
+		if (strcmp(pd + 1, "on") == 0)
+			outMsg._operation = _OPEN;
+		else if (strcmp(pd + 1, "off") == 0)
+			outMsg._operation = _CLOSE;
+		else if (strcmp(pd + 1, "pause") == 0)
+			outMsg._operation = _PLAY_PAUSE;
+		else {
+			outMsg._operation = _OPEN;
+			__STD_PRINT("illegal input: %s\n", pd + 1);
+		}
+	}
+}

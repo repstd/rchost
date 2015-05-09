@@ -7,6 +7,7 @@
 #include "rcmemshare.h"
 #include "rcpipe.h"
 #include "rcosg.h"
+#include "rcAndroidServer.h"
 #include <map>
 bool isReady();
 void setStatus(bool status);
@@ -31,6 +32,7 @@ public:
 	rcFileMapReader* createFileMapReader(char* name);
 	rcOsgHostClient* createOsgHostClient(char* name, int port);
 	rcOsgHostServer* createOsgHostServer(char* name, int port);
+	rcAndroidServer* createAndroidClientAdapter(int androidPort,int hostPort);
 	int			getPortStatic(int port);
 private:
 	rcfactory();

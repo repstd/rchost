@@ -94,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="client.h" />
+    <ClInclude Include="rcAndroidServer.h" />
     <ClInclude Include="rcfactory.h" />
     <ClInclude Include="rcmemshare.h" />
     <ClInclude Include="rcosg.h" />
@@ -107,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="client.cpp" />
+    <ClCompile Include="rcAndroidServer.cpp" />
     <ClCompile Include="rcfactory.cpp" />
     <ClCompile Include="rcmemshare.cpp" />
     <ClCompile Include="rcosg.cpp" />

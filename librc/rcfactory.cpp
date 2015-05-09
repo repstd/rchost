@@ -110,3 +110,9 @@ rcOsgHostServer* rcfactory::createOsgHostServer(char* name, int port)
 	rcOsgHostServer* osgSyncSvr = new rcOsgHostServer(name, port);
 	return osgSyncSvr;
 }
+
+rcAndroidServer* rcfactory::createAndroidClientAdapter(int androidPort, int hostPort) 
+{
+	rcAndroidServer* rcAndroidSvr = new rcAndroidServer(androidPort, hostPort);
+	return rcAndroidSvr;
+}

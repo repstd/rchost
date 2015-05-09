@@ -51,6 +51,9 @@
     <ClInclude Include="rcosg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rcAndroidServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rcosg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rcAndroidServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
