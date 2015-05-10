@@ -971,26 +971,27 @@ void host::run()
 	std::unique_ptr<PipeSignalHandler> pipesignal_handler(new PipeSignalHandler(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
 #endif
-	rcAndroidServer* androidSvr = rcfactory::instance()->createAndroidClientAdapter(_RC_Android_HOST_FORWARD_PORT, getPort());
+	std::unique_ptr<rcAndroidServer> androidSvr = std::unique_ptr<rcAndroidServer>(rcfactory::instance()->createAndroidClientAdapter(_RC_Android_HOST_FORWARD_PORT, getPort()));
 	androidSvr->start();
-	HOST_MSG message;
+	HOST_MSG* message;
 	while (isSocketOpen())
 	{
 		sizeRcv = -1;
 		memset(msgRcv, 0, sizeof(msgRcv));
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
-		if (sizeRcv == _MAX_DATA_SIZE) {
+		if (sizeRcv == sizeof(HOST_MSG)) {
 			/*
 			*Start a thread to finish the program openning/closing task.
 			*msgRcv can be paresed directly if it is sent from a c/c++ socket.
 			*/
-			message = *(reinterpret_cast<HOST_MSG*>(msgRcv));
+			message = reinterpret_cast<HOST_MSG*>(msgRcv);
 		}
 		else {
 			__STD_PRINT("From AppController: %s\n", msgRcv);
+			message = new HOST_MSG;
 			parseMsg(msgRcv, message);
 		}
-		std::unique_ptr<HostMsgHandler> slave(new HostMsgHandler(&message));
+		std::unique_ptr<HostMsgHandler> slave(new HostMsgHandler(message));
 		slave->Init();
 		slave->start();
 		slave.release();

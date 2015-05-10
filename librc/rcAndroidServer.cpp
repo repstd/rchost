@@ -1,8 +1,10 @@
 #include "StdAfx.h"
 #include "rcAndroidServer.h"
 #include "rcfactory.h"
+#include <iostream>
 rcAndroidServer::rcAndroidServer(int androidPort,int hostPort) :THREAD() 
 {
+	//std::cout << "rcAndroidServer inited for " << androidPort << "\t" << hostPort << std::endl;
 	m_svr.reset(rcfactory::instance()->createUdpServer(androidPort));
 	m_clit.reset(rcfactory::instance()->createUdpClient(hostPort,NULL));
 }
@@ -18,7 +20,7 @@ void rcAndroidServer::run()
 	char data[_MAX_DATA_SIZE];
 	int size=-1;
 	_MSG msg;
-	while (m_svr->isSocketOpen()) {
+	while (m_svr->isSocketOpen()){
 		memset(data, 0, _MAX_DATA_SIZE);
 		m_svr->getPacket(from, data, size, _MAX_DATA_SIZE);
 		if (size != -1 && m_clit->isSocketOpen()) {

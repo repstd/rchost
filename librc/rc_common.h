@@ -46,7 +46,7 @@
 #define _RC_OSG_HOST_MEMSHARE_SLAVE_NAME	"MemShareSlave"
 #define _RC_OSG_HOST_SYNC_BROCAST_PORT	6011
 //@yulw,2015-5-8,Port used to forward message from Android to other slaves;
-#define _RC_Android_HOST_FORWARD_PORT 7000
+#define _RC_Android_HOST_FORWARD_PORT 20714
 enum EVENT
 {
 	_OPEN,
@@ -137,4 +137,5 @@ public:
 void writeArgs(_MSG* msg, const char* arg);
 void readArgs(_MSG* msg, int i, char* arg);
 void clear(_MSG* msg);
+void parseMsg(char* inMsg,_MSG* outMsg);
 void parseMsg(char* inMsg,_MSG& outMsg);
