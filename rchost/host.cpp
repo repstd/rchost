@@ -241,25 +241,14 @@ void multiListener::run()
 	int unrespondedSlaveCnt = 0;
 	int tolerance = 2;
 	int allReceived;
+	GetLocalTime(&time);
 	while (isSocketOpen())
 	{
-		lock();
-		if (!isPlaying())
-		{
-			unlock();
-			continue;
-		}
-		else
-			unlock();
-		GetLocalTime(&time);
-		syncMsg->_timeStamp = time;
-		syncMsg->_index = ++indexFrame;
-		strcpy(syncMsg->_userData, "control#next_frame");
-		sendPacket((char*)(syncMsg.get()), sizeof(SYNC_MSG));
+		sendPacket((char*)(&time), sizeof(SYSTEMTIME));
 		if (first)
 		{
 			first = 0;
-			for (int i = 0; i < 36; i++)
+			for (int i = 0; i < 48; i++)
 			{
 				std::shared_ptr<listenerSlave> slave(new listenerSlave(getSocket()));
 				slave->Init();
@@ -267,8 +256,6 @@ void multiListener::run()
 				m_vecSlaves.push_back(slave);
 			}
 		}
-		for (int i = 0; i < m_dTimeToSleep; i++)
-			Sleep(0);
 		cnt = 0;
 		while (1)
 		{
@@ -287,10 +274,9 @@ void multiListener::run()
 				continue;
 			if (unrespondedSlaveCnt< tolerance)
 				allReceived = 1;
-			if (cnt>300 && !allReceived)
+			if (cnt>8000 && !allReceived)
 			{
 				allReceived = 1;
-				__DEBUG_PRINT("%s\n", "Expired.");
 			}
 			if (allReceived == 1)
 			{
@@ -300,11 +286,11 @@ void multiListener::run()
 					iter->second = false;
 				}
 				unlock();
-				__STD_PRINT("%s\n", "*******************************");
 				break;
 			}
 		}
 	}
+
 }
 
 int multiListener::cancel()
