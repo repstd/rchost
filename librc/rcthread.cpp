@@ -14,7 +14,7 @@ void rcmutex_ext::initMutex(MUTEX* mutex) const
 {
 	m_mutex = std::unique_ptr<MUTEX>(mutex);
 }
-const MUTEX* rcmutex_ext::getMutex() const
+MUTEX* rcmutex_ext::getMutex() const
 {
 	return m_mutex.get();
 }

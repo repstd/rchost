@@ -59,13 +59,13 @@ public:
 	std::unique_ptr<client> m_client;
 };
 
-class hostLISTENER : public THREAD, rcmutex, client
+class hostLISTENER : public THREAD, client
 {
 public:
 	hostLISTENER::hostLISTENER(const SOCKET socket)
-		:THREAD(), rcmutex(), client(socket)
+		:THREAD(), client(socket)
 	{
-		initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
+
 	}
 	virtual void run()
 	{

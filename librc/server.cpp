@@ -67,7 +67,7 @@ int udpServer::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 #endif
 		if (size == -1)
 		{
-			__STD_PRINT("Error in receiving data in udpServer:%d", WSAGetLastError());
+			//__STD_PRINT("Error in receiving data in udpServer:%d", WSAGetLastError());
 			return false;
 		}
 	}

@@ -96,7 +96,7 @@ int udpClient::getPacket(sockaddr& from, void *data, int &size, int maxSize)
 #endif
 		if (size == -1)
 		{
-			__STD_PRINT("Error in receiving data in udpClient: %d", WSAGetLastError());
+			//__STD_PRINT("Error in receiving data in udpClient: %d", WSAGetLastError());
 			return false;
 		}
 	}

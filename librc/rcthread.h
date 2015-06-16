@@ -39,7 +39,7 @@ public:
 	void initMutex(MUTEX* mutex) const;
 	void lock() const;
 	void unlock() const;
-	const MUTEX* getMutex() const;
+	MUTEX* getMutex() const;
 private:
 	mutable std::unique_ptr<MUTEX> m_mutex;
 
