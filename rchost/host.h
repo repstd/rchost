@@ -14,8 +14,11 @@
 #include "rcfactory.h"
 #ifdef _LOG 
 #define HOST_LOG_FILENAME "./host.log"
-#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
-#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+//remote log
+//#define _LOG_INIT_HOST __LOG_INIT(HOST_LOG_FILENAME)
+//#define _LOG_FORMAT_HOST(format,data,...) __LOG_FORMAT(HOST_LOG_FILENAME,format,data) 
+#define _LOG_INIT_HOST 
+#define _LOG_FORMAT_HOST(format,data,...)
 #else
 #define HOST_LOG_FILENAME 
 #define _LOG_INIT_HOST

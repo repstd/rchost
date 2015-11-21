@@ -689,7 +689,7 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 	bool isCurDirNeeded = false;
 
 	//std::string args = getArg(filename);
-
+#if 0
 	if (iter != m_mapNameAdditionInfo.end())
 	{
 		/*@yulw,2015-4-15
@@ -719,12 +719,11 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 		if (strstr(iter->second.c_str(), "-curDir") != NULL) {
 			isCurDirNeeded = true;
 		}
-		if (strstr(iter->second.c_str(), "-defaultDir") != NULL) {
+		else if (strstr(iter->second.c_str(), "-defaultDir") != NULL) {
 			isCurDirNeeded = false;
 		}
 
 	}
-
 	if (strstr(iter->second.c_str(), "-s") != NULL)
 		Sleep(500);
 
@@ -794,13 +793,25 @@ DWORD HostOperator::handleProgram(std::string filename, const char op)
 			//TODO:Specify operation for master prog.
 		}
 	}
+#else
+	if (iter != m_mapNameAdditionInfo.end())
+	{
+		if (strstr(iter->second.c_str(), "-curDir") != NULL) {
+			isCurDirNeeded = true;
+		}
+		else if (strstr(iter->second.c_str(), "-defaultDir") != NULL) {
+			isCurDirNeeded = false;
+		}
+	}
+	DWORD result = HostOperatorAPI::handleProgram(filename, op, isCurDirNeeded);
+#endif
 	return ERROR_SUCCESS;
 }
 
 HostMsgHandler::HostMsgHandler(const HOST_MSG* msg) :THREAD(), rcmutex()
 {
 	//use a normal mutex instead of a recursive one.
-	initMutex(new MUTEX(MUTEX::MUTEX_RECURSIVE));
+	initMutex(new MUTEX(MUTEX::MUTEX_NORMAL));
 
 	//Assign the server a msg to handle
 	m_taskMsg = std::auto_ptr<HOST_MSG>(const_cast<HOST_MSG*>(msg));
@@ -947,7 +958,7 @@ void host::run()
 	sockaddr client;
 	int sizeRcv;
 	_LOG_INIT_HOST
-		char feedback[64];
+	char feedback[64];
 
 	/*
 	*Start a udp server to listen  a specified port for signaling the child processes.
@@ -957,8 +968,10 @@ void host::run()
 	std::unique_ptr<PipeSignalHandler> pipesignal_handler(new PipeSignalHandler(this, _RC_PIPE_BROADCAST_PORT));
 	pipesignal_handler->start();
 #endif
+#if 0
 	std::unique_ptr<rcAndroidServer> androidSvr = std::unique_ptr<rcAndroidServer>(rcfactory::instance()->createAndroidClientAdapter(_RC_Android_HOST_FORWARD_PORT, getPort()));
 	androidSvr->start();
+#endif
 	HOST_MSG* message;
 	while (isSocketOpen())
 	{
@@ -973,7 +986,7 @@ void host::run()
 			message = reinterpret_cast<HOST_MSG*>(msgRcv);
 		}
 		else {
-			__STD_PRINT("From AppController: %s\n", msgRcv);
+			__STD_PRINT("From RemoteClient: %s\n", msgRcv);
 			message = new HOST_MSG;
 			parseMsg(msgRcv, message);
 		}
