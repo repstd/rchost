@@ -27,6 +27,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rcrenderer", "rcrenderer\rcrenderer.vcxproj", "{35F65165-2EA6-48A0-84DB-6F43DCF5F5BD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "simplehost", "simplehost\simplehost.vcxproj", "{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		CD_ROM|Win32 = CD_ROM|Win32
@@ -96,6 +98,16 @@ Global
 		{35F65165-2EA6-48A0-84DB-6F43DCF5F5BD}.Release|Win32.Build.0 = Release|Win32
 		{35F65165-2EA6-48A0-84DB-6F43DCF5F5BD}.SingleImage|Win32.ActiveCfg = Release|Win32
 		{35F65165-2EA6-48A0-84DB-6F43DCF5F5BD}.SingleImage|Win32.Build.0 = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.CD_ROM|Win32.ActiveCfg = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.CD_ROM|Win32.Build.0 = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.Debug|Win32.Build.0 = Debug|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.DVD-5|Win32.ActiveCfg = Debug|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.DVD-5|Win32.Build.0 = Debug|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.Release|Win32.ActiveCfg = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.Release|Win32.Build.0 = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.SingleImage|Win32.ActiveCfg = Release|Win32
+		{C23E2257-610F-4CAB-9D3F-A49FA497CBC9}.SingleImage|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

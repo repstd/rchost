@@ -360,6 +360,38 @@ std::string HostOperatorAPI::getArg(std::string filename, std::string additional
 	}
 	return buf;
 }
+DWORD HostOperatorAPI::createProgram(std::string filename, bool isCurDirNeeded)
+{
+
+	std::string strPath = getPath(filename);
+	if (strPath.empty())
+		return ERROR_NOT_FOUND;
+
+	char* curDir = NULL;
+	if (isCurDirNeeded)
+		curDir = parsePath(strPath.c_str());
+
+	std::string strArgv = getArg(filename).c_str();
+	__STD_PRINT("Fetched Args: %s\n", strArgv.c_str());
+	char args[MAX_PATH];
+	if (!strArgv.empty())
+	{
+		strcpy(args, strArgv.c_str());
+	}
+	else
+		strcpy(args, "");
+
+	////Add timestamp to the argv
+	//if (strstr(filename.c_str(), "rcplayer")!= NULL)
+	//{
+	//	char timeStampBuf[40];
+
+	//	//sprintf(timeStampBuf, " --StartTime %ld",)
+
+	//}
+	return createProgram(filename, strPath, curDir, args, 1);
+
+}
 DWORD HostOperatorAPI::createProgram(std::string filename, std::string path, const char* curDir, std::string args, const int argc)
 
 {
@@ -453,38 +485,6 @@ DWORD HostOperatorAPI::createProgram(std::string filename, std::string path, con
 #endif
 	unlock();
 	return ERROR_SUCCESS;
-}
-DWORD HostOperatorAPI::createProgram(std::string filename, bool isCurDirNeeded)
-{
-
-	std::string strPath = getPath(filename);
-	if (strPath.empty())
-		return ERROR_NOT_FOUND;
-
-	char* curDir = NULL;
-	if (isCurDirNeeded)
-		curDir = parsePath(strPath.c_str());
-
-	std::string strArgv = getArg(filename).c_str();
-	__STD_PRINT("Fetched Args: %s\n", strArgv.c_str());
-	char args[MAX_PATH];
-	if (!strArgv.empty())
-	{
-		strcpy(args, strArgv.c_str());
-	}
-	else
-		strcpy(args, "");
-
-	////Add timestamp to the argv
-	//if (strstr(filename.c_str(), "rcplayer")!= NULL)
-	//{
-	//	char timeStampBuf[40];
-
-	//	//sprintf(timeStampBuf, " --StartTime %ld",)
-
-	//}
-	return createProgram(filename, strPath, curDir, args, 1);
-
 }
 DWORD HostOperatorAPI::closeProgram(std::string filename)
 {
@@ -978,18 +978,8 @@ void host::run()
 		sizeRcv = -1;
 		memset(msgRcv, 0, sizeof(msgRcv));
 		getPacket(client, msgRcv, sizeRcv, _MAX_DATA_SIZE);
-		if (sizeRcv == sizeof(HOST_MSG)) {
-			/*
-			*Start a thread to finish the program openning/closing task.
-			*msgRcv can be paresed directly if it is sent from a c/c++ socket.
-			*/
-			message = reinterpret_cast<HOST_MSG*>(msgRcv);
-		}
-		else {
-			__STD_PRINT("From RemoteClient: %s\n", msgRcv);
-			message = new HOST_MSG;
-			parseMsg(msgRcv, message);
-		}
+		message = new HOST_MSG;
+		parseMsg(msgRcv, message);
 		std::unique_ptr<HostMsgHandler> slave(new HostMsgHandler(message));
 		slave->Init();
 		slave->start();
