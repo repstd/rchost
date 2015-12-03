@@ -82,7 +82,7 @@ DWORD simplehost::createProgram(std::string path, const char* curDir, std::strin
 	//Make sure no duplicated task is to be created.
 	if (iter != m_vecProgInfo.end())
 	{
-		__STD_PRINT("%s\n", "duplicated task found.");
+		//__STD_PRINT("%s\n", "duplicated task found.");
 
 		PROCESS_INFORMATION oldInfo = iter->second;
 		DWORD dwExitCode = 0;
@@ -155,15 +155,15 @@ DWORD simplehost::closeProgram(std::string filename)
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
 
-	m_vecProgInfo.erase(iter);
+	m_vecProgInfo.erase(filename);
 	return ERROR_SUCCESS;
 
 }
 DWORD simplehost::handle(simpleCmd& cmd){
-	DWORD result=0;
-	std::cout << "Path: "<<cmd.path << " Args: "<<cmd.arg<<"  Argc:"<<cmd.argc<<std::endl;
+	DWORD result = 0;
+	std::cout << "Path: " << cmd.path << " Args: " << cmd.arg << "  Argc:" << cmd.argc << std::endl;
 	if (cmd.path.find("/") == std::string::npos && cmd.path.find("\\") == std::string::npos) {
-		if (cmd.path.find("quit")!=std::string::npos) {
+		if (cmd.path.find("quit") != std::string::npos) {
 			std::cout << "quit" << std::endl;
 			exit(0);
 			return ERROR_SUCCESS;
@@ -173,20 +173,27 @@ DWORD simplehost::handle(simpleCmd& cmd){
 				return ERROR;
 			std::cout << "UnblockInput" << std::endl;
 			isBlocked = false;
-			return BlockInput(false);
+			result = BlockInput(false);
+			if (result != ERROR_SUCCESS)
+				result = GetLastError();
 		}
 		else if (cmd.path == "block"){
 			if (isBlocked)
 				return ERROR;
 			std::cout << "BlockInput" << std::endl;
 			isBlocked = true;
-			return BlockInput(true);
+			result = BlockInput(true);
+			if (result != ERROR_SUCCESS)
+				result = GetLastError();
 		}
 	}
-	const char* curDir = parsePath(cmd.path.c_str());
-	if (cmd.path.size()) {
-		result = createProgram(cmd.path, NULL, cmd.arg, cmd.argc);
-		if (result != ERROR_SUCCESS)
-			result = createProgram(cmd.path, curDir, cmd.arg, cmd.argc);
+	else {
+		const char* curDir = parsePath(cmd.path.c_str());
+		if (cmd.path.size()) {
+			result = createProgram(cmd.path, NULL, cmd.arg, cmd.argc);
+			if (result != ERROR_SUCCESS)
+				result = createProgram(cmd.path, curDir, cmd.arg, cmd.argc);
+		}
 	}
+	return result;
 }
