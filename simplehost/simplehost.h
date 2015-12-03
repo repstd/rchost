@@ -18,12 +18,15 @@ struct simpleCmd{
 	std::string arg;
 	int argc;
 };
-class simplehost:protected server, public THREAD
+class simplehost:protected server
 {
 public:
 	simplehost(const int port);
 	~simplehost();
-	virtual void run();
+	void run();
+	void start();
+	void join();
+	static DWORD WINAPI loop(void* param);
 private:
 	const char* parsePath(const char* fullpath);
 	void parseMsg(char* inMsg, simpleCmd& outMsg, const char* delimeter);
@@ -31,5 +34,7 @@ private:
 	DWORD createProgram(std::string path, const char* curDir, std::string args, const int argc);
 	DWORD closeProgram(std::string filename);
 	bool isBlocked;
+	DWORD m_threadId;
+	HANDLE m_threadHandle;
 	std::map<std::string, PROCESS_INFORMATION> m_vecProgInfo;
 };

@@ -3,10 +3,11 @@
 #include <sstream>
 #include <iostream>
 typedef std::map<std::string, PROCESS_INFORMATION>::iterator HOST_INFO_ITER;
-simplehost::simplehost(const int port) :server(port), THREAD() {
+simplehost::simplehost(const int port) :server(port){
 }
 simplehost::~simplehost() {
-
+	if (m_threadHandle)
+		CloseHandle(m_threadHandle);
 }
 void simplehost::run(){
 	char msgRcv[_MAX_DATA_SIZE];
@@ -196,4 +197,19 @@ DWORD simplehost::handle(simpleCmd& cmd){
 		}
 	}
 	return result;
+}
+void simplehost::start(){
+	m_threadHandle=CreateThread(NULL, 0, loop, this, 0, &m_threadId);
+	if (!m_threadId)
+		std::cout << "error in starting thread.ErrorCode: " << GetLastError() << std::endl;
+}
+void simplehost::join(){
+	if (m_threadHandle)
+		WaitForSingleObject(m_threadHandle, INFINITE);
+}
+DWORD WINAPI simplehost::loop(void* param) {
+	simplehost* host = reinterpret_cast<simplehost*>(param);
+	if (host)
+		host->run();
+	return 0;
 }
