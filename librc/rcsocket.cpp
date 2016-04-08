@@ -45,7 +45,7 @@ int rcsocket::getPort()
 }
 int rcsocket::isSocketOpen()
 {
-		if (m_socket)
+		if (m_socket>=0)
 			return true;
 		return false;
 }
@@ -128,4 +128,8 @@ int rcsocket::sendPacket(sockaddr to, void *data, int size, int maxSize)
 	}
 	return true;
 
+}
+SOCKET rcsocket::getSocket()
+{
+	return m_socket;
 }

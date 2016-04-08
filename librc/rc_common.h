@@ -2,11 +2,10 @@
 #include "assert.h"
 #include <memory>
 #include <vector>
-
 #define _MSG_ARGC 20
 #define _MSG_BUF_SIZE 300
 #define _MAX_DATA_SIZE (sizeof(_MSG))
-
+#define _MAX_OSG_DATA_SIZE (sizeof(_SYNC_OSG_MSG))
 
 #define __LOG(filename,info)\
 { \
@@ -41,7 +40,13 @@
 #define _STD_PRINT_TIME_PLAIN(systime) std::printf(_FMT_TIME,systime.wYear,systime.wMonth,systime.wDayOfWeek,systime.wDay, systime.wHour, systime.wMinute, systime.wSecond, systime.wMilliseconds);
 #define _RC_PIPE_NAME "\\\\.\\pipe\\rcpipe" 
 #define _RC_PIPE_BROADCAST_PORT 8000
-
+#define _RC_OSG_MAX_EVENT_SIZE 40960
+#define _RC_MEMSHARE_DEFAULT_SIZE 65535
+#define _RC_OSG_HOST_MEMSHARE_MASTER_NAME	"MemShareMaster"
+#define _RC_OSG_HOST_MEMSHARE_SLAVE_NAME	"MemShareSlave"
+#define _RC_OSG_HOST_SYNC_BROCAST_PORT	6011
+//@yulw,2015-5-8,Port used to forward message from Android to other slaves;
+#define _RC_Android_HOST_FORWARD_PORT 20714
 enum EVENT
 {
 	_OPEN,
@@ -50,7 +55,7 @@ enum EVENT
 	_PLAY_PAUSE
 };
 
-struct _MSG
+typedef struct _MSG
 {
 	_MSG()
 	{
@@ -78,7 +83,7 @@ struct _MSG
 	FILETIME _time;
 	char _pBuf[_MSG_BUF_SIZE];
 	int  _pSize[_MSG_ARGC];
-};
+} _MSG;
 
 typedef struct _SYNC_MSG
 {
@@ -86,13 +91,22 @@ typedef struct _SYNC_MSG
 	ULONGLONG _index;
 	char _userData[32];
 } SYNC_MSG;
+typedef struct _SYNC_OSG_MSG
+{
+	int _eventSize;
+	double _matrix[16];
+	double _modelView[16];
+	double _projection[16];
+	double _transform[16];
+	bool _isExit;
+	char _event[_RC_OSG_MAX_EVENT_SIZE];
+} SYNC_OSG_MSG;
+
 struct cmp
 {
 
 	bool operator()(const std::string a, const std::string b)
 	{
-
-
 		if (strcmp(a.c_str(), b.c_str()))
 			return true;
 		else
@@ -123,3 +137,5 @@ public:
 void writeArgs(_MSG* msg, const char* arg);
 void readArgs(_MSG* msg, int i, char* arg);
 void clear(_MSG* msg);
+void parseMsg(char* inMsg,_MSG* outMsg);
+void parseMsg(char* inMsg,_MSG& outMsg);

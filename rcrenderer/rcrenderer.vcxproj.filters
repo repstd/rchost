@@ -24,34 +24,19 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="client.h">
+    <ClInclude Include="rcrenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="server.h">
+    <ClInclude Include="rcSyncImp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rc_common.h">
+    <ClInclude Include="rcapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rcthread.h">
+    <ClInclude Include="rcModelScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rcsocket.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcpipe.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcfactory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcmemshare.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcosg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rcAndroidServer.h">
+    <ClInclude Include="rcTiledMapScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -59,34 +44,19 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="client.cpp">
+    <ClCompile Include="rcrenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="server.cpp">
+    <ClCompile Include="rcSyncImp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rc_common.cpp">
+    <ClCompile Include="render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rcthread.cpp">
+    <ClCompile Include="rcModelScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rcsocket.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rcpipe.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rcfactory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rcmemshare.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rcosg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rcAndroidServer.cpp">
+    <ClCompile Include="rcTiledMapScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

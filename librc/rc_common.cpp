@@ -36,7 +36,7 @@ void writeArgs(_MSG* msg, const char* arg)
 	assert(msg != NULL);
 	char* temp = const_cast<char*>(arg);
 	int curSize = strlen(temp) + 1;
-	assert(msg->_pBuf + _size + curSize != NULL);
+	assert(msg->_pBuf + msg->_size + curSize != NULL);
 	memcpy(msg->_pBuf + msg->_size, temp, curSize*sizeof(char));
 	msg->_size += curSize;
 	msg->_pSize[++(msg->_argc)] = msg->_size;
@@ -58,4 +58,44 @@ void clear(_MSG* msg)
 	memset(msg->_pSize, 0, msg->_argc);
 	msg->_size = 0;
 	msg->_argc = 0;
+}
+void parseMsg(char* inMsg,_MSG* outMsg)
+{
+	char* delimeter = "#";
+	char* pd= strstr(inMsg, delimeter);
+	if (pd) 
+	{
+		*pd = '\0';
+		sprintf(outMsg->_filename, inMsg);
+		if (strcmp(pd + 1, "on") == 0)
+			outMsg->_operation = _OPEN;
+		else if (strcmp(pd + 1, "off") == 0)
+			outMsg->_operation = _CLOSE;
+		else if (strcmp(pd + 1, "pause") == 0)
+			outMsg->_operation = _PLAY_PAUSE;
+		else {
+			outMsg->_operation = _OPEN;
+			__STD_PRINT("illegal input: %s\n", pd + 1);
+		}
+	}
+}
+void parseMsg(char* inMsg,_MSG& outMsg)
+{
+	char* delimeter = "#";
+	char* pd= strstr(inMsg, delimeter);
+	if (pd) 
+	{
+		*pd = '\0';
+		sprintf(outMsg._filename, inMsg);
+		if (strcmp(pd + 1, "on") == 0)
+			outMsg._operation = _OPEN;
+		else if (strcmp(pd + 1, "off") == 0)
+			outMsg._operation = _CLOSE;
+		else if (strcmp(pd + 1, "pause") == 0)
+			outMsg._operation = _PLAY_PAUSE;
+		else {
+			outMsg._operation = _OPEN;
+			__STD_PRINT("illegal input: %s\n", pd + 1);
+		}
+	}
 }

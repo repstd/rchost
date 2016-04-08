@@ -2,6 +2,7 @@
 #include "osgViewer/viewer"
 #include "playerImp.h"
 #include "server.h"
+#include "rcfactory.h"
 #include "rc_common.h"
 class rcviewer:public osgViewer::Viewer
 {
